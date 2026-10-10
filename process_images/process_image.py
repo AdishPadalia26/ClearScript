@@ -60,7 +60,7 @@ def extract_prescription(path):
             },
         ],
         response_format=Prescription,
-        temperature=0.2,
+        temperature=0.1,
         max_tokens=1800,
     )
 

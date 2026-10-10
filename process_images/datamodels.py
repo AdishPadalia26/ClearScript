@@ -15,12 +15,14 @@ class Patient(StrictModel):
     name: FieldValue = Field(description="Patient's name as written.")
     age: FieldValue = Field(description="Patient's age, as an integer when legible.")
     sex: FieldValue = Field(description="Patient's sex as written; preserve abbreviations such as M or F.")
-
+    phone: FieldValue = Field(description="Patient's phone number, if shown on the prescription.")
 
 class Doctor(StrictModel):
     name: FieldValue = Field(description="Prescriber's name, printed or legibly signed.")
     specialty: FieldValue = Field(description="Prescriber's specialty only when shown on the image.")
     registration_number: FieldValue = Field(description="Prescriber's license or registration number, if shown.")
+    phone: FieldValue = Field(description="Prescriber's phone number, if shown on the prescription.")
+    address: FieldValue = Field(description="Prescriber's address, if shown on the prescription.")
 
 
 class Medication(StrictModel):

@@ -1,16 +1,21 @@
 {
   "patient": {
     "name": {
-      "value": "John Redzep",
-      "confidence": 0.58,
-      "reasoning": "Handwritten patient name on the line labeled Patient; surname is somewhat unclear."
+      "value": "John Rodes",
+      "confidence": 0.62,
+      "reasoning": "Handwritten patient name on the Patient line; surname is somewhat unclear."
     },
     "age": {
       "value": 38,
       "confidence": 0.98,
-      "reasoning": "Handwritten '38' on the Age line."
+      "reasoning": "Handwritten '38' beside Age."
     },
     "sex": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
+    },
+    "phone": {
       "value": null,
       "confidence": null,
       "reasoning": null
@@ -18,26 +23,36 @@
   },
   "doctor": {
     "name": {
-      "value": "Bob Baldwin, O.D.",
-      "confidence": 0.98,
-      "reasoning": "Printed in the prescription header."
+      "value": "Bob Ballin, O.D.",
+      "confidence": 0.82,
+      "reasoning": "Printed prescriber name and credential at upper left."
     },
     "specialty": {
-      "value": "O.D.",
-      "confidence": 0.95,
-      "reasoning": "Printed credential following the prescriber's name."
+      "value": null,
+      "confidence": null,
+      "reasoning": null
     },
     "registration_number": {
-      "value": "123",
-      "confidence": 0.98,
-      "reasoning": "Printed after 'License#' at the bottom of the prescription."
+      "value": "License# 123",
+      "confidence": 0.97,
+      "reasoning": "Printed at the bottom of the prescription."
+    },
+    "phone": {
+      "value": "405 732 2277",
+      "confidence": 0.96,
+      "reasoning": "Printed phone number in the upper-right header."
+    },
+    "address": {
+      "value": "6912 E. Reno, Midwest City, OK 73110",
+      "confidence": 0.93,
+      "reasoning": "Printed address in the header."
     }
   },
   "medications": [
     {
       "name": {
         "value": "Maxitrol",
-        "confidence": 0.95,
+        "confidence": 0.88,
         "reasoning": "Handwritten medication name following 'H:'."
       },
       "strength": {
@@ -47,30 +62,31 @@
       },
       "dose": {
         "value": "1 gtt",
-        "confidence": 0.97,
-        "reasoning": "Handwritten directions begin '1 gtt'."
+        "confidence": 0.91,
+        "reasoning": "Handwritten directions begin '1 gt'."
       },
       "frequency": {
-        "value": "qid OD",
-        "confidence": 0.92,
-        "reasoning": "Handwritten directions read 'qid OD'."
+        "value": "qid OD, then taper",
+        "confidence": 0.87,
+        "reasoning": "Handwritten directions state 'qid OD ... then taper'."
       },
       "duration": {
-        "value": "for 5 days, then taper",
-        "confidence": 0.95,
-        "reasoning": "Handwritten directions state 'for 5 days, then taper'."
+        "value": "for 5 days",
+        "confidence": 0.96,
+        "reasoning": "Explicitly written in the directions."
       }
     }
   ],
   "additional_information": {
     "prescription_date": "1/19/97",
-    "diagnosis": null,
+    "diagnosis": "eye infection",
     "notes": [
-      "Address: 2020 C Avenue, Midwest City.",
-      "Disp: 5 ml.",
-      "For eye infection.",
-      "SHAKE.",
-      "Generic: YES."
+      "Disp: 5 ml",
+      "Sig: 1 gtt qid OD for 5 days, then taper, for eye infection. SHAKE.",
+      "Generic: YES / NO",
+      "Refill: None",
+      "Patient address: 2020 C Avenue, Midwest City",
+      "DEA number shown but partly obscured/unreadable."
     ],
     "signature_present": true
   }

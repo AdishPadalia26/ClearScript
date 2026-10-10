@@ -1,26 +1,31 @@
 {
   "patient": {
     "name": {
-      "value": "Armando Coguin",
+      "value": "Armando Coquina",
       "confidence": 0.86,
-      "reasoning": "Handwritten name on the top Name line appears to read “Armando Coguin.”"
+      "reasoning": "Handwritten name on the top 'Name' line."
     },
     "age": {
       "value": 29,
       "confidence": 0.99,
-      "reasoning": "Age line clearly shows 29."
+      "reasoning": "Clearly written as 29 on the Age line."
     },
     "sex": {
       "value": "M",
       "confidence": 0.99,
-      "reasoning": "Sex line clearly shows M."
+      "reasoning": "Clearly written as M on the Sex line."
+    },
+    "phone": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
     }
   },
   "doctor": {
     "name": {
-      "value": null,
-      "confidence": null,
-      "reasoning": null
+      "value": "J dela Cruz",
+      "confidence": 0.62,
+      "reasoning": "Handwritten prescriber signature appears to read 'J dela Cruz'."
     },
     "specialty": {
       "value": null,
@@ -29,36 +34,46 @@
     },
     "registration_number": {
       "value": "123457",
-      "confidence": 0.72,
-      "reasoning": "Handwritten number on the Lic. No. line appears to read 123457."
+      "confidence": 0.7,
+      "reasoning": "Handwritten number on the Lic. No. line."
+    },
+    "phone": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
+    },
+    "address": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
     }
   },
   "medications": [
     {
       "name": {
-        "value": "Amoxicillin",
-        "confidence": 0.98,
-        "reasoning": "Medication line clearly reads Amoxicillin."
+        "value": "Amoxicillin (Himox)",
+        "confidence": 0.94,
+        "reasoning": "The prescription lists '(Himox)' above 'Amoxicillin'."
       },
       "strength": {
         "value": "500 mg",
-        "confidence": 0.97,
-        "reasoning": "Medication line shows 500 mg after the drug name."
+        "confidence": 0.98,
+        "reasoning": "Written after Amoxicillin."
       },
       "dose": {
         "value": "1 cap",
         "confidence": 0.98,
-        "reasoning": "Signature directions state “1 cap.”"
+        "reasoning": "Written in the signature directions."
       },
       "frequency": {
         "value": "3x a day",
-        "confidence": 0.98,
-        "reasoning": "Signature directions state “3x a day.”"
+        "confidence": 0.96,
+        "reasoning": "Written in the signature directions."
       },
       "duration": {
         "value": "seven days",
-        "confidence": 0.96,
-        "reasoning": "Second line of the directions states “seven days.”"
+        "confidence": 0.94,
+        "reasoning": "Written on the second line of the directions."
       }
     }
   ],
@@ -67,8 +82,7 @@
     "diagnosis": null,
     "notes": [
       "Address: West Rembo, Makati City",
-      "(Himox)",
-      "Caps #21",
+      "Cap #21",
       "PTR No. 1234567"
     ],
     "signature_present": true

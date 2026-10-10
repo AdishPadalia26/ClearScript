@@ -3,7 +3,7 @@
     "name": {
       "value": "Dan D. Lyon",
       "confidence": 0.99,
-      "reasoning": "Clearly handwritten on the NAME line."
+      "reasoning": "Handwritten text on the NAME line."
     },
     "age": {
       "value": null,
@@ -14,13 +14,18 @@
       "value": null,
       "confidence": null,
       "reasoning": null
+    },
+    "phone": {
+      "value": "555-5678",
+      "confidence": 0.99,
+      "reasoning": "Handwritten number on the patient PHONE line."
     }
   },
   "doctor": {
     "name": {
       "value": "Jacquelyn Hyde, MD",
       "confidence": 0.99,
-      "reasoning": "Printed in the prescription header."
+      "reasoning": "Printed in the prescription header; handwritten signature reads Jacquelyn Hyde."
     },
     "specialty": {
       "value": null,
@@ -28,9 +33,19 @@
       "reasoning": null
     },
     "registration_number": {
-      "value": "AH0079411",
+      "value": "DEA# AH0079411",
       "confidence": 0.99,
-      "reasoning": "Printed as DEA# AH0079411 in the header."
+      "reasoning": "Printed in the header."
+    },
+    "phone": {
+      "value": "555-1234",
+      "confidence": 0.99,
+      "reasoning": "Printed in the header."
+    },
+    "address": {
+      "value": "123 Upendown Rd.\nNowhere, NC 27000",
+      "confidence": 0.99,
+      "reasoning": "Printed in the prescription header."
     }
   },
   "medications": [
@@ -38,22 +53,22 @@
       "name": {
         "value": "Acetaminophen",
         "confidence": 0.99,
-        "reasoning": "First handwritten ingredient in the Rx section."
+        "reasoning": "First handwritten ingredient in the prescription body."
       },
       "strength": {
         "value": "325 mg",
         "confidence": 0.99,
-        "reasoning": "Written beside Acetaminophen."
+        "reasoning": "Written next to Acetaminophen."
       },
       "dose": {
         "value": "1/2 tsp.",
         "confidence": 0.98,
-        "reasoning": "SIG line states 1/2 tsp."
+        "reasoning": "Handwritten SIG specifies the amount per administration."
       },
       "frequency": {
         "value": "q4-6h prn",
-        "confidence": 0.97,
-        "reasoning": "SIG line states q4-6h prn."
+        "confidence": 0.98,
+        "reasoning": "Handwritten SIG specifies dosing frequency and as-needed use."
       },
       "duration": {
         "value": null,
@@ -64,8 +79,8 @@
     {
       "name": {
         "value": "Alcohol USP",
-        "confidence": 0.98,
-        "reasoning": "Second handwritten ingredient in the Rx section."
+        "confidence": 0.99,
+        "reasoning": "Second handwritten ingredient in the prescription body."
       },
       "strength": {
         "value": null,
@@ -73,9 +88,9 @@
         "reasoning": null
       },
       "dose": {
-        "value": null,
-        "confidence": null,
-        "reasoning": null
+        "value": "15 ml",
+        "confidence": 0.99,
+        "reasoning": "Quantity written next to Alcohol USP."
       },
       "frequency": {
         "value": null,
@@ -91,8 +106,8 @@
     {
       "name": {
         "value": "Cherry Syrup",
-        "confidence": 0.98,
-        "reasoning": "Third handwritten ingredient in the Rx section."
+        "confidence": 0.99,
+        "reasoning": "Third handwritten ingredient in the prescription body."
       },
       "strength": {
         "value": null,
@@ -100,9 +115,9 @@
         "reasoning": null
       },
       "dose": {
-        "value": null,
-        "confidence": null,
-        "reasoning": null
+        "value": "q.s. 90 ml",
+        "confidence": 0.98,
+        "reasoning": "Written next to Cherry Syrup as the compounding quantity."
       },
       "frequency": {
         "value": null,
@@ -120,8 +135,7 @@
     "prescription_date": "9/18/14",
     "diagnosis": null,
     "notes": [
-      "Alcohol USP: 15 ml",
-      "Cherry Syrup: q.s. 90 ml",
+      "Patient address: 123 Jackla Lane",
       "Refills: 1",
       "Product selection permitted",
       "Dispense as written"
