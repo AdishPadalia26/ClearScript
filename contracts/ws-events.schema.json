@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clearscript.local/contracts/ws-events.schema.json",
+  "title": "ClearScript WebSocket Event",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["type", "order"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["order.created", "order.updated"] },
+        "order": { "$ref": "openapi.yaml#/components/schemas/OrderSummary" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "call"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "call.updated" },
+        "call": { "$ref": "openapi.yaml#/components/schemas/Call" }
+      }
+    }
+  ]
+}

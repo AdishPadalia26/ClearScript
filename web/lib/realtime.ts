@@ -56,6 +56,9 @@ export function applyEvent(qc: QueryClient, ev: WsEvent) {
   void qc.invalidateQueries({ queryKey: qk.order(ev.order.order_id) });
 }
 
+/** A connection must stay open this long before it counts as healthy and resets the backoff. */
+export const STABLE_MS = 10_000;
+
 /** Mount once in the app shell. Reconnects with exponential backoff (1 s → 30 s). */
 export function useOrdersSocket() {
   const qc = useQueryClient();
@@ -63,6 +66,7 @@ export function useOrdersSocket() {
     let ws: WebSocket | null = null;
     let attempt = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let stableTimer: ReturnType<typeof setTimeout> | undefined;
     let closed = false;
 
     const connect = () => {
@@ -73,8 +77,10 @@ export function useOrdersSocket() {
         return schedule();
       }
       ws.onopen = () => {
-        attempt = 0;
         setStatus("live");
+        // Reset backoff only once the socket proves stable. A server that accepts and immediately
+        // closes would otherwise cause a reconnect (and a full queue refetch) every second.
+        stableTimer = setTimeout(() => (attempt = 0), STABLE_MS);
         // Anything that changed while we were offline:
         void qc.invalidateQueries({ queryKey: qk.orders() });
       };
@@ -93,6 +99,7 @@ export function useOrdersSocket() {
     };
 
     const schedule = () => {
+      clearTimeout(stableTimer);
       setStatus("reconnecting");
       timer = setTimeout(connect, backoffDelay(attempt++));
     };
@@ -101,6 +108,7 @@ export function useOrdersSocket() {
     return () => {
       closed = true;
       clearTimeout(timer);
+      clearTimeout(stableTimer);
       ws?.close();
     };
   }, [qc]);

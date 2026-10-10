@@ -49,7 +49,32 @@ export function ApproveBar({
   const blocking = blockingFields(order);
   const done = order.status === "approved" || order.status === "rejected";
   const disabled = blocking.length > 0 || done || order.status === "processing";
-  const v = (n: string) => findField(order, n)?.field.value ?? "—";
+  const raw = (n: string) => findField(order, n)?.field.value ?? null;
+  const joined = (...names: string[]) => names.map(raw).filter(Boolean).join(" ");
+  const missing = <span className="text-faint">Not on fax</span>;
+  const summary: [string, React.ReactNode, boolean][] = [
+    [
+      "Patient",
+      [raw("patient.name"), raw("patient.dob") && `DOB ${raw("patient.dob")}`].filter(Boolean).join(", "),
+      false,
+    ],
+    ["Drug", joined("drug.name", "drug.strength", "drug.form"), true],
+    ["Directions", raw("sig.text") ?? raw("sig.frequency"), false],
+    [
+      "Qty / refills",
+      [raw("drug.quantity"), raw("drug.refills")].some(Boolean)
+        ? `${raw("drug.quantity") ?? "?"} / ${raw("drug.refills") ?? "?"}`
+        : "",
+      true,
+    ],
+    [
+      "Prescriber",
+      [raw("prescriber.name"), raw("prescriber.npi") && `NPI ${raw("prescriber.npi")}`]
+        .filter(Boolean)
+        .join(", "),
+      false,
+    ],
+  ];
 
   const blockedNames = serverBlocked?.length ? serverBlocked : null;
 
@@ -115,31 +140,22 @@ export function ApproveBar({
           title="Approve this order?"
           description="It will be sent to the pharmacy system as a FHIR MedicationRequest."
         >
-          <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[13.5px]">
-            <dt className="text-muted">Patient</dt>
-            <dd>
-              {v("patient.name")}, DOB <span className="font-mono">{v("patient.dob")}</span>
-            </dd>
-            <dt className="text-muted">Drug</dt>
-            <dd className="font-mono">
-              {v("drug.name")} {v("drug.strength")} {v("drug.form")}
-            </dd>
-            <dt className="text-muted">Directions</dt>
-            <dd>{v("sig.text")}</dd>
-            <dt className="text-muted">Qty / refills</dt>
-            <dd className="font-mono">
-              {v("drug.quantity")} / {v("drug.refills")}
-            </dd>
-            <dt className="text-muted">Prescriber</dt>
-            <dd>
-              {v("prescriber.name")}, NPI <span className="font-mono">{v("prescriber.npi")}</span>
-            </dd>
+          <dl
+            className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[13.5px]"
+            data-testid="approve-summary"
+          >
+            {summary.map(([label, value, mono]) => (
+              <div key={label} className="contents">
+                <dt className="text-muted">{label}</dt>
+                <dd className={mono && value ? "font-mono" : undefined}>{value || missing}</dd>
+              </div>
+            ))}
           </dl>
           <div className="mt-5 flex justify-end gap-2">
             <Button onClick={() => onConfirmOpenChange(false)}>Cancel</Button>
             <Button
               variant="primary"
-              autoFocus
+              data-autofocus
               disabled={approving}
               onClick={onApprove}
               data-testid="confirm-approve"

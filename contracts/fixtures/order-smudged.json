@@ -1,0 +1,155 @@
+{
+  "order_id": "ord_smudged_001",
+  "fax_id": "fax_smudged_001",
+  "page": 1,
+  "page_count": 1,
+  "received_at": "2026-10-10T14:05:00Z",
+  "status": "blocked",
+  "fields": {
+    "patient": {},
+    "drug": {
+      "drug.name": {
+        "name": "drug.name",
+        "label": "Medication",
+        "value": "Metformin",
+        "normalized": { "rxcui": "860975", "display": "Metformin" },
+        "reads": [
+          {
+            "source": "model_a",
+            "model": "nicrron-vision-a",
+            "value": "Metformin",
+            "evidence": { "page": 1, "bbox": [0.12, 0.31, 0.29, 0.36], "text_seen": "Metformin" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          },
+          {
+            "source": "model_c",
+            "model": "nicrron-vision-c",
+            "value": "Metronidazole",
+            "evidence": { "page": 1, "bbox": [0.12, 0.31, 0.31, 0.36], "text_seen": "Metron..." },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [
+          {
+            "rule": "look_alike_sound_alike",
+            "result": "warn",
+            "severity": "yellow",
+            "fields": ["drug.name"],
+            "reason": "One reader saw a look-alike medication name."
+          }
+        ],
+        "confidence": 0.74,
+        "triage": "yellow",
+        "reasons": ["One reader saw a look-alike medication name."],
+        "risk": "high",
+        "resolution": null
+      },
+      "drug.strength": {
+        "name": "drug.strength",
+        "label": "Strength",
+        "value": "850 mg",
+        "normalized": { "value": 850, "unit": "mg" },
+        "reads": [
+          {
+            "source": "model_a",
+            "model": "nicrron-vision-a",
+            "value": "850 mg",
+            "evidence": { "page": 1, "bbox": [0.31, 0.31, 0.41, 0.36], "text_seen": "850 mg" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          },
+          {
+            "source": "model_b",
+            "model": "nicrron-vision-b",
+            "value": "850 mg",
+            "evidence": { "page": 1, "bbox": [0.31, 0.31, 0.41, 0.36], "text_seen": "850 mg" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          },
+          {
+            "source": "ocr",
+            "model": null,
+            "value": "500 mg",
+            "evidence": { "page": 1, "bbox": [0.31, 0.31, 0.41, 0.36], "text_seen": "5?0 mg" },
+            "ocr_confidence": 41.0,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [
+          {
+            "rule": "reader_disagreement",
+            "result": "fail",
+            "severity": "red",
+            "fields": ["drug.strength"],
+            "reason": "Readers disagree on a high-risk field: 850 mg versus 500 mg."
+          }
+        ],
+        "confidence": 0.53,
+        "triage": "red",
+        "reasons": ["Readers disagree on a high-risk strength field."],
+        "risk": "high",
+        "resolution": null
+      }
+    },
+    "sig": {
+      "sig.frequency": {
+        "name": "sig.frequency",
+        "label": "Frequency",
+        "value": "twice daily",
+        "normalized": { "frequency_per_day": 2 },
+        "reads": [
+          {
+            "source": "model_a",
+            "model": "nicrron-vision-a",
+            "value": "twice daily",
+            "evidence": { "page": 1, "bbox": [0.12, 0.43, 0.54, 0.49], "text_seen": "take twice daily" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [
+          {
+            "rule": "days_supply",
+            "result": "warn",
+            "severity": "yellow",
+            "fields": ["sig.frequency", "drug.quantity"],
+            "reason": "Quantity and frequency imply an unusual days supply."
+          }
+        ],
+        "confidence": 0.71,
+        "triage": "yellow",
+        "reasons": ["Quantity and frequency imply an unusual days supply."],
+        "risk": "normal",
+        "resolution": null
+      }
+    },
+    "prescriber": {},
+    "meta": {}
+  },
+  "counts": { "red": 1, "yellow": 2, "green": 0 },
+  "trace_url": "https://blockconvey.example/traces/ord_smudged_001",
+  "safety_notices": [
+    {
+      "title": "Metformin renal dosing caution",
+      "url": "https://example.org/metformin-caution",
+      "source": "Tavily",
+      "date": "2026-10-01"
+    }
+  ],
+  "active_call_id": null,
+  "audit": [
+    {
+      "at": "2026-10-10T14:05:04Z",
+      "actor": "system",
+      "action": "order.created"
+    }
+  ]
+}

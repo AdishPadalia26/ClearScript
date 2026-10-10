@@ -4,7 +4,7 @@ export const SYSTEM_LABEL: Record<string, string> = {
   clearscript: "ClearScript",
   naive: "Naive pipeline",
   no_ensemble: "Without the 3-model ensemble",
-  no_textract: "Without Textract",
+  no_ocr: "Without OCR pass",
   no_registry: "Without registry checks",
   no_rules: "Without safety rules",
 };

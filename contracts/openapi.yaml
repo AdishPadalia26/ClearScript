@@ -1,0 +1,762 @@
+openapi: 3.1.0
+info:
+  title: ClearScript Demo API
+  version: 0.1.0
+  description: Contract shared by the ClearScript backend and pharmacist console.
+servers:
+  - url: http://localhost:8000
+paths:
+  /faxes:
+    post:
+      summary: Upload a fax for asynchronous prescription extraction.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Upload accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FaxUploadResponse"
+  /orders:
+    get:
+      summary: List prescription orders.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: Matching orders.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderSummary"
+  /orders/{order_id}:
+    get:
+      summary: Get a full order.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Full order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+  /faxes/{fax_id}/pages/{n}.png:
+    get:
+      summary: Get a rendered fax page image.
+      parameters:
+        - name: fax_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: n
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: PNG page image.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+  /orders/{order_id}/fields/{field_name}/resolve:
+    post:
+      summary: Resolve a flagged field manually.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/FieldName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveRequest"
+      responses:
+        "200":
+          description: Updated order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+  /orders/{order_id}/fields/{field_name}/call:
+    post:
+      summary: Start a prescriber clarification call for a field.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/FieldName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        "200":
+          description: Queued call.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+        "422":
+          $ref: "#/components/responses/CallRefused"
+  /calls/{call_id}:
+    get:
+      summary: Get call state.
+      parameters:
+        - $ref: "#/components/parameters/CallId"
+      responses:
+        "200":
+          description: Call.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+  /calls/{call_id}/decision:
+    post:
+      summary: Accept or reject the structured call answer.
+      parameters:
+        - $ref: "#/components/parameters/CallId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CallDecisionRequest"
+      responses:
+        "200":
+          description: Updated order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /calls/{call_id}/cancel:
+    post:
+      summary: Cancel an active call when supported by the provider.
+      parameters:
+        - $ref: "#/components/parameters/CallId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        "200":
+          description: Cancelled call state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+  /webhooks/elevenlabs:
+    post:
+      summary: Receive ElevenLabs post-call webhooks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "204":
+          description: Webhook accepted.
+        "401":
+          description: Invalid signature.
+  /orders/{order_id}/approve:
+    post:
+      summary: Approve an order and emit FHIR.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        "200":
+          description: Approved order and FHIR bundle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApproveResponse"
+        "409":
+          description: Red fields block approval.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedFieldsError"
+  /orders/{order_id}/reject:
+    post:
+      summary: Reject an order.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectRequest"
+      responses:
+        "200":
+          description: Rejected order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+  /orders/{order_id}/fhir:
+    get:
+      summary: Get the approved FHIR R4 Bundle.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: FHIR Bundle.
+          content:
+            application/fhir+json:
+              schema:
+                type: object
+  /orders/{order_id}/export.csv:
+    get:
+      summary: Export an approved order as a CSV row.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: CSV export.
+          content:
+            text/csv:
+              schema:
+                type: string
+  /metrics:
+    get:
+      summary: Get benchmark and demo metrics.
+      responses:
+        "200":
+          description: Metrics.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Metrics"
+  /ws/orders:
+    get:
+      summary: WebSocket stream for order and call updates.
+      responses:
+        "101":
+          description: WebSocket upgrade.
+components:
+  parameters:
+    OrderId:
+      name: order_id
+      in: path
+      required: true
+      schema:
+        type: string
+    CallId:
+      name: call_id
+      in: path
+      required: true
+      schema:
+        type: string
+    FieldName:
+      name: field_name
+      in: path
+      required: true
+      description: URL-encoded dotted field name, for example drug.strength.
+      schema:
+        type: string
+  responses:
+    CallRefused:
+      description: Call cannot be started.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Request conflicts with current state.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    FaxUploadResponse:
+      type: object
+      required: [fax_id, order_ids]
+      additionalProperties: false
+      properties:
+        fax_id:
+          type: string
+        order_ids:
+          type: array
+          items:
+            type: string
+    Triage:
+      type: string
+      enum: [green, yellow, red]
+    OrderStatus:
+      type: string
+      enum: [processing, needs_review, blocked, ready, approved, rejected]
+    ReadSource:
+      type: string
+      enum: [model_a, model_b, model_c, ocr, pharmacist, prescriber_call]
+    Evidence:
+      type: object
+      required: [page, bbox, text_seen]
+      additionalProperties: false
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        bbox:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: number
+            minimum: 0
+            maximum: 1
+        text_seen:
+          type: string
+    Read:
+      type: object
+      required: [source, value, evidence, ocr_confidence]
+      additionalProperties: false
+      properties:
+        source:
+          $ref: "#/components/schemas/ReadSource"
+        model:
+          type: [string, "null"]
+        value:
+          type: [string, "null"]
+        evidence:
+          anyOf:
+            - $ref: "#/components/schemas/Evidence"
+            - type: "null"
+        ocr_confidence:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 100
+        crop_url:
+          type: [string, "null"]
+        call_id:
+          type: [string, "null"]
+    Check:
+      type: object
+      required: [rule, result, severity, fields, reason]
+      additionalProperties: false
+      properties:
+        rule:
+          type: string
+        result:
+          type: string
+          enum: [pass, warn, fail]
+        severity:
+          type: string
+          enum: [red, yellow, info]
+        fields:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+    Field:
+      type: object
+      required: [name, label, value, normalized, reads, checks, confidence, triage, reasons, risk, resolution]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        value:
+          type: [string, "null"]
+        normalized:
+          type: [object, "null"]
+        reads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Read"
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Check"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        triage:
+          $ref: "#/components/schemas/Triage"
+        reasons:
+          type: array
+          items:
+            type: string
+        risk:
+          type: string
+          enum: [high, normal]
+        resolution:
+          anyOf:
+            - type: object
+              required: [by, action, at]
+              additionalProperties: false
+              properties:
+                by:
+                  type: string
+                  enum: [pharmacist, prescriber_call]
+                action:
+                  type: string
+                  enum: [accept, edit]
+                at:
+                  type: string
+                  format: date-time
+                user:
+                  type: string
+            - type: "null"
+    GroupName:
+      type: string
+      enum: [patient, drug, sig, prescriber, meta]
+    FieldGroup:
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/Field"
+    Counts:
+      type: object
+      required: [red, yellow, green]
+      additionalProperties: false
+      properties:
+        red:
+          type: integer
+          minimum: 0
+        yellow:
+          type: integer
+          minimum: 0
+        green:
+          type: integer
+          minimum: 0
+    SafetyNotice:
+      type: object
+      required: [title, url, source]
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+        source:
+          type: string
+        date:
+          type: string
+    AuditEvent:
+      type: object
+      required: [at, actor, action]
+      additionalProperties: false
+      properties:
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        action:
+          type: string
+        field:
+          type: string
+        detail:
+          type: string
+    Order:
+      type: object
+      required: [order_id, fax_id, page, page_count, received_at, status, fields, counts, trace_url, safety_notices, active_call_id, audit]
+      additionalProperties: false
+      properties:
+        order_id:
+          type: string
+        fax_id:
+          type: string
+        page:
+          type: integer
+          minimum: 1
+        page_count:
+          type: integer
+          minimum: 1
+        received_at:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        fields:
+          type: object
+          required: [patient, drug, sig, prescriber, meta]
+          additionalProperties: false
+          properties:
+            patient:
+              $ref: "#/components/schemas/FieldGroup"
+            drug:
+              $ref: "#/components/schemas/FieldGroup"
+            sig:
+              $ref: "#/components/schemas/FieldGroup"
+            prescriber:
+              $ref: "#/components/schemas/FieldGroup"
+            meta:
+              $ref: "#/components/schemas/FieldGroup"
+        counts:
+          $ref: "#/components/schemas/Counts"
+        trace_url:
+          type: [string, "null"]
+        safety_notices:
+          type: array
+          items:
+            $ref: "#/components/schemas/SafetyNotice"
+        active_call_id:
+          type: [string, "null"]
+        audit:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+    OrderSummary:
+      type: object
+      required: [order_id, fax_id, received_at, status, patient_initials, drug_display, prescriber_display, counts, has_high_risk_flag]
+      additionalProperties: false
+      properties:
+        order_id:
+          type: string
+        fax_id:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        patient_initials:
+          type: [string, "null"]
+        drug_display:
+          type: [string, "null"]
+        prescriber_display:
+          type: [string, "null"]
+        counts:
+          $ref: "#/components/schemas/Counts"
+        has_high_risk_flag:
+          type: boolean
+    NumberSource:
+      type: object
+      required: [kind, detail, agreement]
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum: [fax_header, npi_registry, tavily]
+        detail:
+          type: string
+        agreement:
+          type: boolean
+    TranscriptTurn:
+      type: object
+      required: [role, text, t]
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+          enum: [agent, office]
+        text:
+          type: string
+        t:
+          type: number
+          minimum: 0
+    CallResult:
+      type: object
+      required: [outcome, confirmed_value, confirmed_by, notes]
+      additionalProperties: false
+      properties:
+        outcome:
+          type: string
+          enum: [confirmed, unclear, refused]
+        confirmed_value:
+          type: [string, "null"]
+        confirmed_by:
+          type: [string, "null"]
+        notes:
+          type: [string, "null"]
+    Call:
+      type: object
+      required: [call_id, order_id, field_name, status, to_number, number_source, question, transcript, result, decision, started_at, ended_at, error]
+      additionalProperties: false
+      properties:
+        call_id:
+          type: string
+        order_id:
+          type: string
+        field_name:
+          type: string
+        status:
+          type: string
+          enum: [queued, dialing, in_progress, completed, no_answer, failed]
+        to_number:
+          type: string
+        number_source:
+          $ref: "#/components/schemas/NumberSource"
+        question:
+          type: string
+        transcript:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptTurn"
+        result:
+          anyOf:
+            - $ref: "#/components/schemas/CallResult"
+            - type: "null"
+        decision:
+          type: [string, "null"]
+          enum: [accept, reject, null]
+        started_at:
+          type: [string, "null"]
+          format: date-time
+        ended_at:
+          type: [string, "null"]
+          format: date-time
+        error:
+          type: [string, "null"]
+    Metrics:
+      type: object
+      required: [split, n_faxes, n_fields, systems, tradeoff, reliability, generated_at]
+      additionalProperties: false
+      properties:
+        split:
+          type: string
+          enum: [held_out]
+        n_faxes:
+          type: integer
+          minimum: 0
+        n_fields:
+          type: integer
+          minimum: 0
+        systems:
+          type: array
+          items:
+            type: object
+            required: [name, silent_error_rate, field_accuracy, flag_rate, flag_precision, trap_catch_rate, ece, cost_per_fax_usd, p50_latency_s]
+            additionalProperties: false
+            properties:
+              name:
+                type: string
+              silent_error_rate:
+                type: number
+              field_accuracy:
+                type: number
+              flag_rate:
+                type: number
+              flag_precision:
+                type: number
+              trap_catch_rate:
+                type: number
+              ece:
+                type: number
+              cost_per_fax_usd:
+                type: number
+              p50_latency_s:
+                type: number
+        tradeoff:
+          type: array
+          items:
+            type: object
+            required: [threshold, flag_rate, silent_error_rate]
+            additionalProperties: false
+            properties:
+              threshold:
+                type: number
+              flag_rate:
+                type: number
+              silent_error_rate:
+                type: number
+        reliability:
+          type: array
+          items:
+            type: object
+            required: [bin_mid, accuracy, count]
+            additionalProperties: false
+            properties:
+              bin_mid:
+                type: number
+              accuracy:
+                type: number
+              count:
+                type: integer
+        generated_at:
+          type: string
+          format: date-time
+    ResolveRequest:
+      type: object
+      required: [action]
+      additionalProperties: false
+      properties:
+        action:
+          type: string
+          enum: [accept, edit]
+        value:
+          type: string
+    CallDecisionRequest:
+      type: object
+      required: [decision]
+      additionalProperties: false
+      properties:
+        decision:
+          type: string
+          enum: [accept, reject]
+    ApproveResponse:
+      type: object
+      required: [order, fhir]
+      additionalProperties: false
+      properties:
+        order:
+          $ref: "#/components/schemas/Order"
+        fhir:
+          type: object
+    RejectRequest:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 1
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      additionalProperties: true
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+    RedFieldsError:
+      type: object
+      required: [error, fields]
+      additionalProperties: false
+      properties:
+        error:
+          const: red_fields
+        fields:
+          type: array
+          items:
+            type: string

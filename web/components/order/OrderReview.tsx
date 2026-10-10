@@ -13,6 +13,7 @@ import { Button, Kbd } from "@/components/ui/button";
 import { Tip } from "@/components/ui/tooltip";
 import { ApproveBar } from "./ApproveBar";
 import { FhirModal } from "./FhirModal";
+import { OutcomeBanner } from "./OutcomeBanner";
 import { SafetyBanner } from "./SafetyBanner";
 import { api, pageUrl, redFieldsFrom } from "@/lib/api/client";
 import {
@@ -74,7 +75,7 @@ function OrderSkeleton() {
 
 export function OrderReview({ id }: { id: string }) {
   const router = useRouter();
-  const { data: order, isPending, isError, error, refetch } = useOrder(id);
+  const { data: order, isPending, error, refetch } = useOrder(id);
   const { data: queue } = useOrders();
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -87,7 +88,9 @@ export function OrderReview({ id }: { id: string }) {
   // Remember the latest call per field so its result stays visible after the order clears active_call_id.
   const [callByField, setCallByField] = useState<Record<string, string>>({});
   const [split, setSplit] = useSplit("cs-split");
-  const [faxCollapsed, setFaxCollapsed] = useState(false);
+  const [faxCollapsed, setFaxCollapsed] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches,
+  );
   const container = useRef<HTMLDivElement>(null);
 
   const resolve = useResolveField(id);
@@ -274,7 +277,7 @@ export function OrderReview({ id }: { id: string }) {
   };
 
   if (isPending) return <OrderSkeleton />;
-  if (isError || !order) {
+  if (!order) {
     return (
       <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
         <p className="font-medium">
@@ -379,11 +382,6 @@ export function OrderReview({ id }: { id: string }) {
                 <Phone size={12} className="animate-pulse" aria-hidden /> Call in progress
               </button>
             ) : null}
-            {order.status === "approved" ? (
-              <Button size="sm" onClick={showFhir}>
-                View FHIR
-              </Button>
-            ) : null}
             {order.trace_url ? (
               <a
                 href={order.trace_url}
@@ -398,6 +396,7 @@ export function OrderReview({ id }: { id: string }) {
           </div>
         </header>
 
+        <OutcomeBanner order={order} onViewFhir={showFhir} onNext={goNext} hasNext={!!nextOrderId} />
         <SafetyBanner notices={order.safety_notices} />
 
         {processing ? (
@@ -415,7 +414,7 @@ export function OrderReview({ id }: { id: string }) {
         ) : (
           <>
             <div
-              className="flex items-center gap-2 border-b border-rule px-4 py-2 text-[13px]"
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-rule px-4 py-2 text-[13px]"
               data-testid="summary"
             >
               <span className={cn("font-medium", order.counts.red ? "text-red" : "text-muted")}>

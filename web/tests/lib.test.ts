@@ -215,3 +215,29 @@ describe("realtime + metrics helpers", () => {
     expect(improvement(0, 0.004)).toBeNull();
   });
 });
+
+describe("connection status", () => {
+  it("reports what actually happened, not navigator.onLine", async () => {
+    const { describeConnection } = await import("@/lib/connection");
+    expect(describeConnection("unreachable", "live").kind).toBe("down");
+    expect(describeConnection("ok", "live").kind).toBe("live");
+    // Socket down but requests succeed: polling is a normal mode, not an error.
+    expect(describeConnection("ok", "reconnecting")).toMatchObject({
+      kind: "polling",
+      label: "Auto-refresh",
+    });
+    expect(describeConnection("unknown", "connecting").kind).toBe("connecting");
+  });
+
+  it("only marks the server unreachable when no response arrived", async () => {
+    const { ApiError } = await import("@/lib/api/client");
+    const c = await import("@/lib/connection");
+    c.reportApiError(new ApiError(0, "network", "x"));
+    expect(c.getApiReachability()).toBe("unreachable");
+    c.reportApiError(new ApiError(500, "http_500", "x")); // server answered: it's up
+    expect(c.getApiReachability()).toBe("ok");
+    c.reportApiError(new ApiError(0, "network", "x"));
+    c.reportApiSuccess();
+    expect(c.getApiReachability()).toBe("ok");
+  });
+});

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { FileUp, Loader2 } from "lucide-react";
+import { FileUp, Loader2, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,17 +18,20 @@ export function validateFax(file: Pick<File, "name" | "type" | "size">): string 
   return null;
 }
 
+/** `retry` is set when the file was fine but the upload failed, so the same file can be resent. */
+type UploadError = { message: string; retry: File | null };
+
 export function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const upload = useUploadFax();
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<UploadError | null>(null);
 
   const send = useCallback(
     (file: File) => {
       const problem = validateFax(file);
-      if (problem) return setError(problem);
+      if (problem) return setError({ message: problem, retry: null });
       setError(null);
       setProgress(0);
       upload.mutate(
@@ -43,7 +46,7 @@ export function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           },
           onError: (e) => {
             setProgress(null);
-            setError(e.message);
+            setError({ message: e.message, retry: file });
           },
         },
       );
@@ -52,6 +55,7 @@ export function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   );
 
   const busy = progress !== null;
+  const choose = () => input.current?.click();
 
   return (
     <Dialog
@@ -65,7 +69,12 @@ export function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         title="Upload a fax"
         description="PDF, TIFF or PNG, up to 20 MB. Each prescription on it becomes an order."
       >
-        <label
+        {/* A real button: Tab reaches it with a visible ring, and Enter/Space open the file picker. */}
+        <button
+          type="button"
+          onClick={choose}
+          disabled={busy}
+          aria-describedby={error ? "upload-error" : undefined}
           onDragOver={(e) => {
             e.preventDefault();
             setDrag(true);
@@ -75,12 +84,12 @@ export function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             e.preventDefault();
             setDrag(false);
             const f = e.dataTransfer.files[0];
-            if (f) send(f);
+            if (f && !busy) send(f);
           }}
           className={cn(
-            "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
+            "flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors disabled:cursor-progress",
             drag ? "border-accent bg-accent-bg" : "border-rule-strong hover:bg-surface-2",
-            busy && "pointer-events-none opacity-70",
+            busy && "opacity-70",
           )}
         >
           {busy ? (
@@ -89,19 +98,21 @@ export function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             <FileUp className="text-muted" size={26} aria-hidden />
           )}
           <span className="font-medium">{busy ? "Uploading…" : "Drop the fax here, or choose a file"}</span>
-          <input
-            ref={input}
-            type="file"
-            data-testid="fax-input"
-            accept=".pdf,.tif,.tiff,.png,application/pdf,image/tiff,image/png"
-            className="sr-only"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) send(f);
-              e.target.value = "";
-            }}
-          />
-        </label>
+        </button>
+        <input
+          ref={input}
+          type="file"
+          tabIndex={-1}
+          aria-hidden
+          data-testid="fax-input"
+          accept=".pdf,.tif,.tiff,.png,application/pdf,image/tiff,image/png"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) send(f);
+            e.target.value = "";
+          }}
+        />
 
         {busy ? (
           <div
@@ -123,13 +134,21 @@ export function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
         {error ? (
           <div
+            id="upload-error"
             role="alert"
-            className="mt-4 flex items-center justify-between gap-3 rounded-md border border-red/30 bg-red-bg px-3 py-2 text-[13px] text-red"
+            className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red/30 bg-red-bg px-3 py-2 text-[13px] text-red"
           >
-            {error}
-            <Button size="sm" onClick={() => input.current?.click()}>
-              Choose another file
-            </Button>
+            <span className="min-w-0 flex-1">{error.message}</span>
+            <span className="flex gap-2">
+              {error.retry ? (
+                <Button size="sm" onClick={() => error.retry && send(error.retry)}>
+                  <RotateCw size={13} aria-hidden /> Try again
+                </Button>
+              ) : null}
+              <Button size="sm" onClick={choose}>
+                Choose {error.retry ? "a different" : "another"} file
+              </Button>
+            </span>
           </div>
         ) : null}
       </DialogContent>

@@ -1,0 +1,40 @@
+{
+  "split": "held_out",
+  "n_faxes": 42,
+  "n_fields": 714,
+  "systems": [
+    {
+      "name": "clearscript",
+      "silent_error_rate": 0.011,
+      "field_accuracy": 0.982,
+      "flag_rate": 0.174,
+      "flag_precision": 0.79,
+      "trap_catch_rate": 0.94,
+      "ece": 0.031,
+      "cost_per_fax_usd": 0.41,
+      "p50_latency_s": 18.6
+    },
+    {
+      "name": "naive",
+      "silent_error_rate": 0.086,
+      "field_accuracy": 0.941,
+      "flag_rate": 0.021,
+      "flag_precision": 0.35,
+      "trap_catch_rate": 0.43,
+      "ece": 0.118,
+      "cost_per_fax_usd": 0.09,
+      "p50_latency_s": 4.2
+    }
+  ],
+  "tradeoff": [
+    { "threshold": 0.55, "flag_rate": 0.31, "silent_error_rate": 0.006 },
+    { "threshold": 0.7, "flag_rate": 0.174, "silent_error_rate": 0.011 },
+    { "threshold": 0.85, "flag_rate": 0.091, "silent_error_rate": 0.024 }
+  ],
+  "reliability": [
+    { "bin_mid": 0.55, "accuracy": 0.58, "count": 31 },
+    { "bin_mid": 0.75, "accuracy": 0.77, "count": 119 },
+    { "bin_mid": 0.95, "accuracy": 0.97, "count": 564 }
+  ],
+  "generated_at": "2026-10-10T14:30:00Z"
+}

@@ -13,6 +13,7 @@ export function DialogContent({
   description,
   children,
   className,
+  onOpenAutoFocus,
   ...props
 }: D.DialogContentProps & { title: React.ReactNode; description?: React.ReactNode }) {
   return (
@@ -23,6 +24,18 @@ export function DialogContent({
           "anim-pop fixed top-1/2 left-1/2 z-50 flex max-h-[88vh] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-rule bg-surface shadow-pop",
           className,
         )}
+        // Radix focuses the first tabbable (the ✕) and overrides React's autoFocus. A control marked
+        // `data-autofocus` (the dialog's primary action) gets focus instead, so Enter confirms.
+        onOpenAutoFocus={(e) => {
+          const target = (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(
+            "[data-autofocus]",
+          );
+          if (target) {
+            e.preventDefault();
+            target.focus();
+          }
+          onOpenAutoFocus?.(e);
+        }}
         {...props}
       >
         <div className="flex items-start justify-between gap-4 border-b border-rule px-5 py-4">

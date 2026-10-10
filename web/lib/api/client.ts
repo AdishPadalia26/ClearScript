@@ -32,6 +32,27 @@ export const enc = (segment: string) => encodeURIComponent(segment);
 export const pageUrl = (faxId: string, page: number) =>
   `${env.apiBase}/faxes/${enc(faxId)}/pages/${page}.png`;
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+/**
+ * One error shape for every transport. Understands the contract's `{error, message}` and FastAPI's
+ * `{detail}` (a string, a validation array of `{msg}`, or an object wrapping `{error, message}`).
+ */
+export function apiErrorFrom(status: number, body: unknown, fallback: string): ApiError {
+  const b = isRecord(body) ? body : {};
+  const inner = isRecord(b.detail) ? b.detail : b;
+  const code = typeof inner.error === "string" ? inner.error : `http_${status}`;
+  let message = fallback;
+  if (typeof inner.message === "string") message = inner.message;
+  else if (typeof b.detail === "string") message = b.detail;
+  else if (Array.isArray(b.detail)) {
+    const msgs = b.detail.flatMap((d) => (isRecord(d) && typeof d.msg === "string" ? [d.msg] : []));
+    if (msgs.length) message = msgs.join("; ");
+  }
+  return new ApiError(status, code, message, inner);
+}
+
 async function errorFrom(res: Response): Promise<ApiError> {
   let body: unknown = null;
   try {
@@ -39,15 +60,7 @@ async function errorFrom(res: Response): Promise<ApiError> {
   } catch {
     /* non-JSON error body */
   }
-  const b = (body ?? {}) as Record<string, unknown>;
-  const code = typeof b.error === "string" ? b.error : `http_${res.status}`;
-  const message =
-    typeof b.message === "string"
-      ? b.message
-      : typeof b.detail === "string"
-        ? b.detail
-        : `${res.status} ${res.statusText || "Request failed"}`;
-  return new ApiError(res.status, code, message, body);
+  return apiErrorFrom(res.status, body, `${res.status} ${res.statusText || "Request failed"}`);
 }
 
 async function request<S extends z.ZodTypeAny>(
@@ -128,11 +141,7 @@ export const api = {
           /* handled below */
         }
         if (xhr.status < 200 || xhr.status >= 300) {
-          const b = (body ?? {}) as Record<string, unknown>;
-          const msg = typeof b.message === "string" ? b.message : `Upload failed (${xhr.status})`;
-          return reject(
-            new ApiError(xhr.status, typeof b.error === "string" ? b.error : "upload", msg, body),
-          );
+          return reject(apiErrorFrom(xhr.status, body, `Upload failed (${xhr.status}).`));
         }
         const parsed = s.uploadResponse.safeParse(body);
         if (!parsed.success)

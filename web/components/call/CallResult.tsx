@@ -58,7 +58,13 @@ export function CallResult({
       {r.notes ? <p className="mt-2 text-[13px] text-muted">{r.notes}</p> : null}
 
       {call.decision ? (
-        <p className="mt-4 text-[13px] font-medium">
+        <p
+          className="mt-4 text-[13px] font-medium outline-none"
+          tabIndex={-1}
+          ref={(el) => {
+            if (el && el.ownerDocument.activeElement === el.ownerDocument.body) el.focus();
+          }}
+        >
           {call.decision === "accept"
             ? "Answer accepted. The field is updated."
             : "Answer rejected. The field keeps its flag."}

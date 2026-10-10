@@ -1,0 +1,55 @@
+{
+  "call_id": "call_confirmed_001",
+  "order_id": "ord_smudged_001",
+  "field_name": "drug.strength",
+  "status": "completed",
+  "to_number": "+15551234567",
+  "number_source": {
+    "kind": "npi_registry",
+    "detail": "NPI registry practice phone agreed with fax header.",
+    "agreement": true
+  },
+  "question": "Can you confirm the strength of Metformin - is it 850 mg or 500 mg?",
+  "transcript": [
+    {
+      "role": "agent",
+      "text": "Hello, this is an automated assistant calling for Main Street Pharmacy. This call may be recorded.",
+      "t": 0.4
+    },
+    {
+      "role": "office",
+      "text": "This is Maria at Dr. Chen's office.",
+      "t": 4.1
+    },
+    {
+      "role": "agent",
+      "text": "Can you confirm the strength of Metformin - is it 850 milligrams or 500 milligrams?",
+      "t": 6.2
+    },
+    {
+      "role": "office",
+      "text": "It should be 500 milligrams.",
+      "t": 10.8
+    },
+    {
+      "role": "agent",
+      "text": "So that is 500 milligrams, correct?",
+      "t": 12.1
+    },
+    {
+      "role": "office",
+      "text": "Correct.",
+      "t": 14.3
+    }
+  ],
+  "result": {
+    "outcome": "confirmed",
+    "confirmed_value": "500 mg",
+    "confirmed_by": "Maria, front desk",
+    "notes": null
+  },
+  "decision": null,
+  "started_at": "2026-10-10T14:15:00Z",
+  "ended_at": "2026-10-10T14:15:18Z",
+  "error": null
+}

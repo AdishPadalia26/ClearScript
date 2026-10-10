@@ -1,0 +1,134 @@
+{
+  "order_id": "order-synthetic-fax-001",
+  "fax_id": "synthetic-fax-001",
+  "patient": {
+    "name": {
+      "name": "name",
+      "value": "Jordan Lee",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    },
+    "dob": {
+      "name": "dob",
+      "value": "1984-05-02",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    }
+  },
+  "drug": {
+    "name": {
+      "name": "name",
+      "value": "amoxicillin",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    },
+    "strength": {
+      "name": "strength",
+      "value": "500mg",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    },
+    "quantity": {
+      "name": "quantity",
+      "value": "30",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    }
+  },
+  "sig": {
+    "dose": {
+      "name": "dose",
+      "value": "1 tablet",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    },
+    "frequency": {
+      "name": "frequency",
+      "value": "twice daily",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    },
+    "duration_days": {
+      "name": "duration_days",
+      "value": "10 days",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    }
+  },
+  "prescriber": {
+    "name": {
+      "name": "name",
+      "value": "Avery Chen",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    },
+    "npi": {
+      "name": "npi",
+      "value": "1000000001",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    },
+    "dea": {
+      "name": "dea",
+      "value": "AB1234563",
+      "normalized": null,
+      "reads": [],
+      "checks": [],
+      "confidence": 0.0,
+      "triage": "green",
+      "reasons": []
+    }
+  },
+  "written_date": {
+    "name": "written_date",
+    "value": "2026-10-09",
+    "normalized": null,
+    "reads": [],
+    "checks": [],
+    "confidence": 0.0,
+    "triage": "green",
+    "reasons": []
+  },
+  "status": "needs_review",
+  "audit": []
+}

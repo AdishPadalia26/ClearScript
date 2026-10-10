@@ -39,7 +39,7 @@ export const SOURCE_LABEL: Record<ReadSource, string> = {
   model_a: "Model A",
   model_b: "Model B",
   model_c: "Model C",
-  textract: "Textract",
+  ocr: "OCR",
   pharmacist: "Pharmacist",
   prescriber_call: "Prescriber call",
 };

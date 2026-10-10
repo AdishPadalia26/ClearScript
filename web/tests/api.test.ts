@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 import * as s from "@/lib/api/schemas";
-import { api, ApiError, enc, redFieldsFrom } from "@/lib/api/client";
+import { api, ApiError, apiErrorFrom, enc, redFieldsFrom } from "@/lib/api/client";
 import { applyEvent, upsertSummary } from "@/lib/realtime";
 import { qk } from "@/lib/api/keys";
 import { toSummary } from "@/lib/order";
@@ -93,5 +93,31 @@ describe("realtime cache patching", () => {
     const call = { call_id: "c1", order_id: "o", field_name: "f", status: "dialing" } as never;
     applyEvent(qc, { type: "call.updated", call });
     expect(qc.getQueryData(qk.call("c1"))).toBe(call);
+  });
+});
+
+describe("apiErrorFrom", () => {
+  it("reads the contract shape", () => {
+    expect(apiErrorFrom(409, { error: "call_active", message: "Busy" }, "x")).toMatchObject({
+      code: "call_active",
+      message: "Busy",
+    });
+  });
+  it("reads FastAPI string, validation-array and wrapped details", () => {
+    expect(apiErrorFrom(404, { detail: "Order not found" }, "x")).toMatchObject({
+      code: "http_404",
+      message: "Order not found",
+    });
+    expect(
+      apiErrorFrom(422, { detail: [{ type: "missing", loc: ["body", "file"], msg: "Field required" }] }, "x"),
+    ).toMatchObject({ code: "http_422", message: "Field required" });
+    const wrapped = apiErrorFrom(409, { detail: { error: "red_fields", fields: ["drug.strength"] } }, "x");
+    expect(redFieldsFrom(wrapped)).toEqual(["drug.strength"]);
+  });
+  it("falls back for empty or non-JSON bodies", () => {
+    expect(apiErrorFrom(502, null, "Upload failed (502).")).toMatchObject({
+      code: "http_502",
+      message: "Upload failed (502).",
+    });
   });
 });

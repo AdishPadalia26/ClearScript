@@ -9,7 +9,7 @@ export const readSource = z.enum([
   "model_a",
   "model_b",
   "model_c",
-  "textract",
+  "ocr",
   "pharmacist",
   "prescriber_call",
 ]);

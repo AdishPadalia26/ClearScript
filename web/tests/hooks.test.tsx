@@ -270,3 +270,69 @@ describe("useOrdersSocket", () => {
     }
   });
 });
+
+describe("useOrdersSocket backoff", () => {
+  class FlapWS {
+    static all: FlapWS[] = [];
+    onopen: (() => void) | null = null;
+    onmessage: ((m: { data: string }) => void) | null = null;
+    onclose: (() => void) | null = null;
+    constructor(public url: string) {
+      FlapWS.all.push(this);
+    }
+    close() {}
+  }
+
+  it("keeps backing off when the server accepts then immediately closes", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("WebSocket", FlapWS);
+    FlapWS.all = [];
+    try {
+      const { wrapper } = setup();
+      const { unmount } = renderHook(() => useOrdersSocket(), { wrapper });
+      // Each connection opens then drops at once (a snapshot-and-close server).
+      const flap = () => {
+        const ws = FlapWS.all.at(-1)!;
+        act(() => ws.onopen!());
+        act(() => ws.onclose!());
+      };
+      flap();
+      act(() => vi.advanceTimersByTime(999));
+      expect(FlapWS.all).toHaveLength(1); // not before 1 s
+      act(() => vi.advanceTimersByTime(1));
+      expect(FlapWS.all).toHaveLength(2);
+      flap();
+      act(() => vi.advanceTimersByTime(1999));
+      expect(FlapWS.all).toHaveLength(2); // backoff grew to 2 s instead of resetting to 1 s
+      act(() => vi.advanceTimersByTime(1));
+      expect(FlapWS.all).toHaveLength(3);
+      unmount();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it("resets backoff after a connection stays up past the stability window", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("WebSocket", FlapWS);
+    FlapWS.all = [];
+    try {
+      const { wrapper } = setup();
+      const { unmount } = renderHook(() => useOrdersSocket(), { wrapper });
+      const first = FlapWS.all[0]!;
+      act(() => first.onclose!()); // fail once → attempt 1
+      act(() => vi.advanceTimersByTime(1000));
+      const second = FlapWS.all[1]!;
+      act(() => second.onopen!());
+      act(() => vi.advanceTimersByTime(10_000)); // stable
+      act(() => second.onclose!());
+      act(() => vi.advanceTimersByTime(1000));
+      expect(FlapWS.all).toHaveLength(3); // back to the 1 s first step
+      unmount();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+});

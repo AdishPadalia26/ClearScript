@@ -1,10 +1,11 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { isApiError } from "@/lib/api/client";
+import { reportApiError, reportApiSuccess } from "@/lib/connection";
 import { isMock } from "@/lib/env";
 
 const DemoContext = createContext(false);
@@ -26,6 +27,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [qc] = useState(
     () =>
       new QueryClient({
+        // Every request outcome feeds the connection indicator (see lib/connection.ts).
+        queryCache: new QueryCache({ onSuccess: reportApiSuccess, onError: reportApiError }),
+        mutationCache: new MutationCache({ onSuccess: reportApiSuccess, onError: reportApiError }),
         defaultOptions: {
           queries: {
             staleTime: 5_000,

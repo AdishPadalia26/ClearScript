@@ -31,28 +31,28 @@ interface FieldSpec {
   normalized?: Record<string, unknown> | null;
   checks?: Check[];
   /** Per-source value overrides; defaults to everyone reading `value`. */
-  reads?: Partial<Record<"model_a" | "model_b" | "model_c" | "textract", string | null>>;
+  reads?: Partial<Record<"model_a" | "model_b" | "model_c" | "ocr", string | null>>;
   ocr?: number;
 }
 
 function buildField(spec: FieldSpec, lineText: string, page: number): Field {
   const box = boxFor(spec.line, lineText, spec.sub);
   const seen = spec.sub ?? lineText;
-  const sources = ["model_a", "model_b", "model_c", "textract"] as const;
+  const sources = ["model_a", "model_b", "model_c", "ocr"] as const;
   const offsets: Record<(typeof sources)[number], [number, number]> = {
     model_a: [0, 0],
     model_b: [0.002, -0.001],
     model_c: [-0.002, 0.001],
-    textract: [0.001, 0.0015],
+    ocr: [0.001, 0.0015],
   };
   const reads: Read[] = sources.map((source) => {
     const value = spec.reads && source in spec.reads ? (spec.reads[source] ?? null) : spec.value;
     return {
       source,
-      model: source === "textract" ? "aws-textract" : MODELS[source],
+      model: source === "ocr" ? "image-ocr" : MODELS[source],
       value,
       evidence: { page, bbox: jitter(box, ...offsets[source]), text_seen: value ?? seen },
-      ocr_confidence: source === "textract" ? (spec.ocr ?? 97) : null,
+      ocr_confidence: source === "ocr" ? (spec.ocr ?? 97) : null,
     };
   });
   const triage = spec.triage ?? "green";
@@ -350,9 +350,9 @@ export function buildScenarios(): Scenario[] {
           triage: "red",
           confidence: 0.31,
           ocr: 41,
-          reads: { model_a: "850 mg", model_b: "850 mg", model_c: "500 mg", textract: "850 mg" },
+          reads: { model_a: "850 mg", model_b: "850 mg", model_c: "500 mg", ocr: "850 mg" },
           reasons: [
-            "2 of 3 readers saw 850 mg, 1 saw 500 mg; Textract confidence 41%.",
+            "2 of 3 model reads saw 850 mg, 1 saw 500 mg; OCR confidence 41%.",
             "First digit is smudged on the fax.",
           ],
           normalized: { value: 850, unit: "mg", rxcui_850: "861004", rxcui_500: "861007" },

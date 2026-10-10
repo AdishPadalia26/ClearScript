@@ -1,17 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { CheckCheck, Inbox, RotateCw } from "lucide-react";
-import { toast } from "sonner";
+import { CheckCheck, CircleCheck, Inbox, RotateCw, TriangleAlert, X } from "lucide-react";
+import { QueueSummary } from "@/components/queue/QueueSummary";
 import { QueueTable } from "@/components/queue/QueueTable";
+import { useOpenUpload } from "@/components/shell/upload-context";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { api } from "@/lib/api/client";
 import { useOrders } from "@/lib/api/hooks";
-import type { OrderStatus } from "@/lib/api/types";
+import type { OrderStatus, OrderSummary } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
-import { compareQueue } from "@/lib/order";
+import { useHotkeys } from "@/lib/keyboard";
+import { canBulkApprove, compareQueue } from "@/lib/order";
 
 const TABS: { id: OrderStatus | "all"; label: string }[] = [
   { id: "all", label: "All" },
@@ -21,12 +24,23 @@ const TABS: { id: OrderStatus | "all"; label: string }[] = [
   { id: "approved", label: "Approved" },
 ];
 
+/** What a bulk approve actually did, kept on screen until dismissed (a toast alone is too easy to miss). */
+interface BulkResult {
+  approved: number;
+  failed: { label: string; reason: string }[];
+}
+
+const orderLabel = (o: OrderSummary | undefined, id: string) => o?.drug_display ?? id;
+
 export default function QueuePage() {
+  const router = useRouter();
+  const openUpload = useOpenUpload();
   // One cached list, filtered client-side: tab switches are instant and WS patches hit one cache.
   const { data, isPending, isError, error, refetch } = useOrders();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState(false);
+  const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
 
   const sorted = useMemo(() => (data ? [...data].sort(compareQueue) : []), [data]);
   const rows = useMemo(
@@ -40,21 +54,35 @@ export default function QueuePage() {
   }, [sorted]);
   // Drop selections that are no longer eligible (e.g. an order got a new flag over the socket).
   const eligible = useMemo(() => {
-    const ok = new Set(
-      sorted.filter((o) => o.status === "ready" && !o.has_high_risk_flag).map((o) => o.order_id),
-    );
+    const ok = new Set(sorted.filter(canBulkApprove).map((o) => o.order_id));
     return [...selected].filter((id) => ok.has(id));
   }, [sorted, selected]);
   const eligibleSet = useMemo(() => new Set(eligible), [eligible]);
 
+  const openOrder = (id: string) => router.push(`/orders/${encodeURIComponent(id)}`);
+  const nextId = sorted.find((o) => o.status === "blocked" || o.status === "needs_review")?.order_id;
+  useHotkeys({ n: () => nextId && openOrder(nextId) });
+
   const bulk = useMutation({
-    mutationFn: async (ids: string[]) => Promise.allSettled(ids.map((id) => api.approve(id))),
-    onSuccess: (results) => {
-      const ok = results.filter((r) => r.status === "fulfilled").length;
-      const failed = results.length - ok;
-      if (ok) toast.success(`Approved ${ok} order${ok === 1 ? "" : "s"}.`);
-      if (failed)
-        toast.error(`${failed} order${failed === 1 ? "" : "s"} couldn't be approved. Open them to see why.`);
+    mutationFn: async (ids: string[]) => {
+      const results = await Promise.allSettled(ids.map((id) => api.approve(id)));
+      return results.map((r, i) => ({ id: ids[i]!, r }));
+    },
+    onSuccess: (outcomes) => {
+      const byId = new Map(sorted.map((o) => [o.order_id, o]));
+      setBulkResult({
+        approved: outcomes.filter((o) => o.r.status === "fulfilled").length,
+        failed: outcomes.flatMap(({ id, r }) =>
+          r.status === "rejected"
+            ? [
+                {
+                  label: orderLabel(byId.get(id), id),
+                  reason: r.reason instanceof Error ? r.reason.message : "Unknown error",
+                },
+              ]
+            : [],
+        ),
+      });
       setSelected(new Set());
       setConfirm(false);
       void refetch();
@@ -63,8 +91,51 @@ export default function QueuePage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-4 border-b border-rule bg-surface px-4">
-        <div role="tablist" aria-label="Filter by status" className="flex">
+      {data ? <QueueSummary orders={sorted} onReviewNext={openOrder} onUpload={openUpload} /> : null}
+
+      {bulkResult ? (
+        <div
+          role="status"
+          className={cn(
+            "flex items-start gap-2 border-b px-4 py-2 text-[13px] sm:px-6",
+            bulkResult.failed.length
+              ? "border-yellow/30 bg-yellow-bg text-yellow"
+              : "border-green/30 bg-green-bg text-green",
+          )}
+        >
+          {bulkResult.failed.length ? (
+            <TriangleAlert size={15} className="mt-0.5 shrink-0" aria-hidden />
+          ) : (
+            <CircleCheck size={15} className="mt-0.5 shrink-0" aria-hidden />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">
+              Approved and sent {bulkResult.approved} order{bulkResult.approved === 1 ? "" : "s"}
+              {bulkResult.failed.length ? `; ${bulkResult.failed.length} couldn't be approved:` : "."}
+            </p>
+            {bulkResult.failed.length ? (
+              <ul className="mt-0.5 text-ink">
+                {bulkResult.failed.map((f) => (
+                  <li key={f.label}>
+                    {f.label}: {f.reason}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          <button
+            onClick={() => setBulkResult(null)}
+            className="rounded p-0.5 hover:bg-surface/60"
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : null}
+
+      <div className="flex items-center gap-2 border-b border-rule bg-surface pr-4 pl-2 sm:pl-4">
+        {/* Tabs scroll horizontally on narrow screens instead of clipping. */}
+        <div role="tablist" aria-label="Filter by status" className="flex min-w-0 flex-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -72,7 +143,7 @@ export default function QueuePage() {
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "relative h-11 px-3 text-[13.5px] font-medium",
+                "relative h-11 shrink-0 px-3 text-[13.5px] font-medium whitespace-nowrap",
                 tab === t.id
                   ? "text-ink after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-accent"
                   : "text-muted hover:text-ink",
@@ -83,12 +154,23 @@ export default function QueuePage() {
             </button>
           ))}
         </div>
-        <div className="ml-auto">
-          <Button variant="secondary" disabled={!eligible.length} onClick={() => setConfirm(true)}>
-            <CheckCheck size={15} aria-hidden /> Approve selected
-            {eligible.length ? ` (${eligible.length})` : ""}
-          </Button>
-        </div>
+        <Button
+          variant="secondary"
+          disabled={!eligible.length}
+          onClick={() => setConfirm(true)}
+          aria-label={`Approve selected${eligible.length ? ` (${eligible.length})` : ""}`}
+          title={
+            eligible.length
+              ? undefined
+              : "Select ready orders without high-risk flags to approve them together"
+          }
+        >
+          <CheckCheck size={15} aria-hidden />
+          <span className="max-md:hidden">
+            Approve selected{eligible.length ? ` (${eligible.length})` : ""}
+          </span>
+          {eligible.length ? <span className="tabular md:hidden">{eligible.length}</span> : null}
+        </Button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto bg-surface">
@@ -98,7 +180,7 @@ export default function QueuePage() {
               <div key={i} className="skeleton h-9" />
             ))}
           </div>
-        ) : isError ? (
+        ) : isError && !data ? (
           <div role="alert" className="flex flex-col items-center gap-3 p-16 text-center">
             <p className="font-medium">Couldn&apos;t load the queue.</p>
             <p className="text-muted">{error.message}</p>
@@ -109,12 +191,24 @@ export default function QueuePage() {
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 p-16 text-center text-muted">
             <Inbox size={28} aria-hidden />
-            <p className="font-medium text-ink">{tab === "all" ? "No faxes yet" : "Nothing here"}</p>
-            <p>
-              {tab === "all"
-                ? "Upload a fax, or wait for one to arrive. New orders appear here automatically."
-                : "Orders with this status will show up here."}
-            </p>
+            {tab === "all" ? (
+              <>
+                <p className="font-medium text-ink">No faxes yet</p>
+                <p>New faxes appear here as they arrive. To try it now, upload a prescription fax.</p>
+                <Button className="mt-2" onClick={openUpload}>
+                  Upload a fax
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-ink">
+                  No {TABS.find((t) => t.id === tab)?.label.toLowerCase()} orders
+                </p>
+                <Button variant="ghost" className="mt-1 text-accent" onClick={() => setTab("all")}>
+                  Show all {sorted.length} orders
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <QueueTable orders={rows} selected={eligibleSet} onSelectedChange={setSelected} />
@@ -130,11 +224,11 @@ export default function QueuePage() {
             <Button onClick={() => setConfirm(false)}>Cancel</Button>
             <Button
               variant="primary"
-              autoFocus
+              data-autofocus
               disabled={bulk.isPending}
               onClick={() => bulk.mutate(eligible)}
             >
-              Approve {eligible.length}
+              {bulk.isPending ? "Approving…" : `Approve ${eligible.length}`}
             </Button>
           </div>
         </DialogContent>

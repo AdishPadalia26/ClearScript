@@ -42,7 +42,7 @@ export function findField(order: Order, name: string): FieldRef | null {
 
 export const isFlagged = (f: Field) => f.triage !== "green";
 
-const MACHINE_SOURCES = new Set<Read["source"]>(["model_a", "model_b", "model_c", "textract"]);
+const MACHINE_SOURCES = new Set<Read["source"]>(["model_a", "model_b", "model_c", "ocr"]);
 const norm = (v: string | null) => (v == null ? null : v.trim().replace(/\s+/g, " ").toLowerCase());
 
 /** Most common machine-read value (normalized). Ties go to the earliest read. */

@@ -44,8 +44,13 @@ test("smudged order: approve blocked until strength is resolved by edit (keyboar
 
   await page.keyboard.press("Escape");
   await page.keyboard.press(`${mod}+Enter`);
-  await page.getByTestId("confirm-approve").click();
+  // Keyboard all the way: the confirm button must own focus so Enter approves.
+  await expect(page.getByTestId("confirm-approve")).toBeFocused();
+  await page.keyboard.press("Enter");
   await expectFhir(page);
+  // The result outlives the modal.
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("outcome")).toContainText("Approved and sent");
 });
 
 test("drawer shows each reader's crop with the disagreeing read highlighted", async ({ page }) => {

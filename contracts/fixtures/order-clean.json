@@ -1,0 +1,193 @@
+{
+  "order_id": "ord_clean_001",
+  "fax_id": "fax_clean_001",
+  "page": 1,
+  "page_count": 1,
+  "received_at": "2026-10-10T14:00:00Z",
+  "status": "ready",
+  "fields": {
+    "patient": {
+      "patient.name": {
+        "name": "patient.name",
+        "label": "Patient name",
+        "value": "Jordan Lee",
+        "normalized": { "text": "Jordan Lee", "initials": "JL" },
+        "reads": [
+          {
+            "source": "model_a",
+            "model": "nicrron-vision-a",
+            "value": "Jordan Lee",
+            "evidence": { "page": 1, "bbox": [0.12, 0.12, 0.34, 0.16], "text_seen": "Jordan Lee" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [],
+        "confidence": 0.98,
+        "triage": "green",
+        "reasons": ["All readers agreed on the patient name."],
+        "risk": "normal",
+        "resolution": null
+      }
+    },
+    "drug": {
+      "drug.name": {
+        "name": "drug.name",
+        "label": "Medication",
+        "value": "Metformin",
+        "normalized": { "rxcui": "860975", "display": "Metformin" },
+        "reads": [
+          {
+            "source": "model_a",
+            "model": "nicrron-vision-a",
+            "value": "Metformin",
+            "evidence": { "page": 1, "bbox": [0.12, 0.31, 0.28, 0.36], "text_seen": "Metformin" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [
+          {
+            "rule": "rxnorm_match",
+            "result": "pass",
+            "severity": "info",
+            "fields": ["drug.name"],
+            "reason": "Medication normalized to RxCUI 860975."
+          }
+        ],
+        "confidence": 0.97,
+        "triage": "green",
+        "reasons": ["Medication normalized against RxNorm."],
+        "risk": "normal",
+        "resolution": null
+      },
+      "drug.strength": {
+        "name": "drug.strength",
+        "label": "Strength",
+        "value": "500 mg",
+        "normalized": { "value": 500, "unit": "mg" },
+        "reads": [
+          {
+            "source": "model_a",
+            "model": "nicrron-vision-a",
+            "value": "500 mg",
+            "evidence": { "page": 1, "bbox": [0.29, 0.31, 0.39, 0.36], "text_seen": "500 mg" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [
+          {
+            "rule": "dose_range",
+            "result": "pass",
+            "severity": "info",
+            "fields": ["drug.strength"],
+            "reason": "Strength is inside the expected range for metformin."
+          }
+        ],
+        "confidence": 0.96,
+        "triage": "green",
+        "reasons": ["All readers agreed on 500 mg."],
+        "risk": "high",
+        "resolution": null
+      }
+    },
+    "sig": {
+      "sig.raw": {
+        "name": "sig.raw",
+        "label": "Directions",
+        "value": "Take one tablet by mouth twice daily.",
+        "normalized": { "frequency_per_day": 2, "route": "oral", "dose": 1, "unit": "tablet" },
+        "reads": [
+          {
+            "source": "ocr",
+            "model": null,
+            "value": "Take one tablet by mouth twice daily.",
+            "evidence": { "page": 1, "bbox": [0.12, 0.43, 0.67, 0.49], "text_seen": "Take one tablet by mouth twice daily." },
+            "ocr_confidence": 94.2,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [],
+        "confidence": 0.94,
+        "triage": "green",
+        "reasons": ["Directions parsed consistently."],
+        "risk": "normal",
+        "resolution": null
+      }
+    },
+    "prescriber": {
+      "prescriber.npi": {
+        "name": "prescriber.npi",
+        "label": "Prescriber NPI",
+        "value": "1234567893",
+        "normalized": { "npi": "1234567893" },
+        "reads": [
+          {
+            "source": "model_b",
+            "model": "nicrron-vision-b",
+            "value": "1234567893",
+            "evidence": { "page": 1, "bbox": [0.12, 0.72, 0.31, 0.77], "text_seen": "1234567893" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [
+          {
+            "rule": "npi_registry",
+            "result": "pass",
+            "severity": "info",
+            "fields": ["prescriber.npi"],
+            "reason": "NPI matched an active prescriber record."
+          }
+        ],
+        "confidence": 0.99,
+        "triage": "green",
+        "reasons": ["NPI matched the registry."],
+        "risk": "normal",
+        "resolution": null
+      }
+    },
+    "meta": {
+      "written_date": {
+        "name": "written_date",
+        "label": "Written date",
+        "value": "2026-10-09",
+        "normalized": { "date": "2026-10-09" },
+        "reads": [
+          {
+            "source": "ocr",
+            "model": null,
+            "value": "2026-10-09",
+            "evidence": { "page": 1, "bbox": [0.66, 0.11, 0.82, 0.15], "text_seen": "10/09/2026" },
+            "ocr_confidence": 91.4,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [],
+        "confidence": 0.93,
+        "triage": "green",
+        "reasons": ["Written date is readable."],
+        "risk": "normal",
+        "resolution": null
+      }
+    }
+  },
+  "counts": { "red": 0, "yellow": 0, "green": 5 },
+  "trace_url": "https://blockconvey.example/traces/ord_clean_001",
+  "safety_notices": [],
+  "active_call_id": null,
+  "audit": [
+    {
+      "at": "2026-10-10T14:00:02Z",
+      "actor": "system",
+      "action": "order.created"
+    }
+  ]
+}

@@ -55,25 +55,41 @@ function Legend({ items }: { items: [string, string][] }) {
 }
 
 /** Demo hook: what a single-model pipeline confidently ships for the smudged fax. Static by design. */
+/**
+ * Demo hook: the same smudged fax through a single-model pipeline vs ClearScript. A worked example,
+ * labelled as one, so it's never mistaken for a benchmark result.
+ */
 function NaiveCard() {
   return (
     <section
-      className="grid gap-4 rounded-lg border border-rule bg-surface p-5 md:grid-cols-2"
+      className="rounded-lg border border-rule bg-surface p-4 sm:p-5"
       data-testid="naive-card"
+      aria-labelledby="example-h"
     >
-      <div>
-        <h2 className="text-[14px] text-muted">A naive pipeline ships</h2>
-        <p className="mt-1 font-mono text-[22px]">Metformin HCl 850 mg</p>
-        <p className="mt-1 text-[14px] text-muted">Model confidence 94%. No flag. Sent to fill.</p>
-      </div>
-      <div className="border-rule md:border-l md:pl-5">
-        <h2 className="text-[14px] text-muted">ClearScript</h2>
-        <p className="mt-1 flex items-center gap-2 font-mono text-[22px]">
-          <OctagonAlert size={18} className="text-red" aria-label="Blocked" /> Strength blocked
-        </p>
-        <p className="mt-1 text-[14px] text-muted">
-          Readers split 850 / 500. Office confirmed 500 mg by phone before approval.
-        </p>
+      <h2 id="example-h" className="text-[15px] font-semibold">
+        Why silent errors matter
+      </h2>
+      <p className="mt-0.5 text-[13px] text-muted">
+        Worked example: the smudged demo fax. Illustration, not a benchmark result.
+      </p>
+      <div className="mt-3 grid gap-4 md:grid-cols-2">
+        <div>
+          <h3 className="text-[14px] text-muted">A single-model pipeline ships</h3>
+          <p className="mt-1 font-mono text-[20px] sm:text-[22px]">Metformin HCl 850 mg</p>
+          <p className="mt-1 text-[14px] text-muted">
+            One confident read of a smudged digit. No flag. Sent to fill.
+          </p>
+        </div>
+        <div className="border-rule md:border-l md:pl-5">
+          <h3 className="text-[14px] text-muted">ClearScript</h3>
+          <p className="mt-1 flex items-center gap-2 font-mono text-[20px] sm:text-[22px]">
+            <OctagonAlert size={18} className="text-red" aria-hidden /> Strength blocked
+          </p>
+          <p className="mt-1 text-[14px] text-muted">
+            Readers split 850 / 500, so it stops for a pharmacist. The office confirmed 500 mg by phone before
+            approval.
+          </p>
+        </div>
       </div>
     </section>
   );
@@ -93,7 +109,7 @@ export default function MetricsPage() {
       </div>
     );
   }
-  if (isError) {
+  if (isError && !m) {
     return (
       <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
         <p className="font-medium">Couldn&apos;t load benchmark metrics.</p>

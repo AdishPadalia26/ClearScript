@@ -42,7 +42,7 @@ export const mockMetrics: Metrics = {
       p50_latency_s: 3.9,
     },
     {
-      name: "no_textract",
+      name: "no_ocr",
       silent_error_rate: 0.008,
       field_accuracy: 0.976,
       flag_rate: 0.151,

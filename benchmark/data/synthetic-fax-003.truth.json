@@ -1,0 +1,23 @@
+{
+  "fax_id": "synthetic-fax-003",
+  "patient": {
+    "name": "Taylor Nguyen",
+    "dob": "1984-05-02"
+  },
+  "drug": {
+    "name": "hydralazine",
+    "strength": "50mg",
+    "quantity": "5"
+  },
+  "sig": {
+    "dose": "1 tablet",
+    "frequency": "every 8 hours",
+    "duration_days": "10 days"
+  },
+  "prescriber": {
+    "name": "Jordan Lee",
+    "npi": "1000000001",
+    "dea": "AB1234563"
+  },
+  "written_date": "2026-10-09"
+}

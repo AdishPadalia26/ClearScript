@@ -57,7 +57,7 @@ export function FhirModal({
             <Download size={14} aria-hidden /> Download
           </Button>
           {onNext ? (
-            <Button variant="primary" className="ml-auto" onClick={onNext} autoFocus>
+            <Button variant="primary" className="ml-auto" onClick={onNext} data-autofocus>
               Next order
             </Button>
           ) : null}

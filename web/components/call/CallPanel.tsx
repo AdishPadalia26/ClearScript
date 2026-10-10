@@ -89,7 +89,7 @@ export function CallPanel({
   const live =
     !!call && (call.status === "dialing" || call.status === "in_progress" || call.status === "queued");
   const now = useTicker(live);
-  const prescriber = findField(order, "prescriber.name")?.field.value ?? "the prescriber";
+  const prescriber = findField(order, "prescriber.name")?.field.value ?? "Prescriber's office";
 
   // ── Pre-call confirmation: nothing dials until the pharmacist presses Start call.
   if (!call) {

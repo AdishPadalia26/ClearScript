@@ -1,0 +1,77 @@
+{
+  "patient": {
+    "name": {
+      "value": "John Redzep",
+      "confidence": 0.58,
+      "reasoning": "Handwritten patient name on the line labeled Patient; surname is somewhat unclear."
+    },
+    "age": {
+      "value": 38,
+      "confidence": 0.98,
+      "reasoning": "Handwritten '38' on the Age line."
+    },
+    "sex": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
+    }
+  },
+  "doctor": {
+    "name": {
+      "value": "Bob Baldwin, O.D.",
+      "confidence": 0.98,
+      "reasoning": "Printed in the prescription header."
+    },
+    "specialty": {
+      "value": "O.D.",
+      "confidence": 0.95,
+      "reasoning": "Printed credential following the prescriber's name."
+    },
+    "registration_number": {
+      "value": "123",
+      "confidence": 0.98,
+      "reasoning": "Printed after 'License#' at the bottom of the prescription."
+    }
+  },
+  "medications": [
+    {
+      "name": {
+        "value": "Maxitrol",
+        "confidence": 0.95,
+        "reasoning": "Handwritten medication name following 'H:'."
+      },
+      "strength": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      },
+      "dose": {
+        "value": "1 gtt",
+        "confidence": 0.97,
+        "reasoning": "Handwritten directions begin '1 gtt'."
+      },
+      "frequency": {
+        "value": "qid OD",
+        "confidence": 0.92,
+        "reasoning": "Handwritten directions read 'qid OD'."
+      },
+      "duration": {
+        "value": "for 5 days, then taper",
+        "confidence": 0.95,
+        "reasoning": "Handwritten directions state 'for 5 days, then taper'."
+      }
+    }
+  ],
+  "additional_information": {
+    "prescription_date": "1/19/97",
+    "diagnosis": null,
+    "notes": [
+      "Address: 2020 C Avenue, Midwest City.",
+      "Disp: 5 ml.",
+      "For eye infection.",
+      "SHAKE.",
+      "Generic: YES."
+    ],
+    "signature_present": true
+  }
+}

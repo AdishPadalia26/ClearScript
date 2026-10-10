@@ -65,10 +65,14 @@ const Row = memo(function Row({
       onMouseEnter={() => onHover(o.order_id)}
       className={cn(
         "h-11 cursor-pointer border-b border-rule text-[13.5px] transition-colors duration-100 focus-visible:outline-offset-[-2px]",
+        "max-md:grid max-md:h-auto max-md:grid-cols-[28px_1fr_auto] max-md:gap-x-2 max-md:gap-y-1 max-md:px-3 max-md:py-2.5",
         active ? "bg-accent-bg" : "hover:bg-surface-2",
       )}
     >
-      <td className="w-10 pl-4" onClick={(e) => e.stopPropagation()}>
+      <td
+        className="w-10 pl-4 max-md:row-span-2 max-md:w-auto max-md:pt-0.5 max-md:pl-0"
+        onClick={(e) => e.stopPropagation()}
+      >
         <input
           type="checkbox"
           className="size-4 accent-[var(--accent)] disabled:opacity-30"
@@ -82,13 +86,13 @@ const Row = memo(function Row({
           }
         />
       </td>
-      <td className="tabular px-3 whitespace-nowrap text-muted">
+      <td className="tabular px-3 whitespace-nowrap text-muted max-md:hidden">
         <time dateTime={o.received_at} title={new Date(o.received_at).toLocaleString()}>
           {relativeTime(o.received_at, now)}
         </time>
       </td>
-      <td className="px-3 font-mono">{o.patient_initials ?? "—"}</td>
-      <td className="px-3 font-medium">
+      <td className="px-3 font-mono max-md:hidden">{o.patient_initials ?? "—"}</td>
+      <td className="px-3 font-medium max-md:col-start-2 max-md:row-span-2 max-md:row-start-1 max-md:px-0">
         {o.status === "processing" ? (
           <span className="inline-flex items-center gap-1.5 text-muted">
             <Loader2 size={13} className="animate-spin" aria-hidden /> Reading fax…
@@ -96,12 +100,23 @@ const Row = memo(function Row({
         ) : (
           (o.drug_display ?? "—")
         )}
+        {/* Phone: the hidden columns collapse into one meta line under the drug. */}
+        <span className="mt-0.5 block text-[12.5px] font-normal text-muted md:hidden">
+          {[o.patient_initials, o.prescriber_display, relativeTime(o.received_at, now)]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
       </td>
-      <td className="px-3 text-muted">{o.prescriber_display ?? "—"}</td>
-      <td className="px-3">
+      <td className="px-3 text-muted max-md:hidden">{o.prescriber_display ?? "—"}</td>
+      <td className="px-3 max-md:col-start-3 max-md:row-start-2 max-md:justify-self-end max-md:px-0">
         {o.status === "processing" ? null : <FlagChips red={o.counts.red} yellow={o.counts.yellow} />}
       </td>
-      <td className={cn("px-3 pr-4 font-medium whitespace-nowrap", STATUS_STYLE[o.status])}>
+      <td
+        className={cn(
+          "px-3 pr-4 font-medium whitespace-nowrap max-md:col-start-3 max-md:row-start-1 max-md:px-0 max-md:text-right",
+          STATUS_STYLE[o.status],
+        )}
+      >
         {STATUS_LABEL[o.status]}
       </td>
     </tr>
@@ -158,8 +173,8 @@ export function QueueTable({
   const allChecked = bulkable.length > 0 && bulkable.every((id) => selected.has(id));
 
   return (
-    <table className="w-full border-collapse" aria-label="Order queue">
-      <thead className="sticky top-0 z-10 bg-surface">
+    <table className="w-full border-collapse max-md:block" aria-label="Order queue">
+      <thead className="sticky top-0 z-10 bg-surface max-md:hidden">
         <tr className="h-9 border-b border-rule text-left text-[12.5px] text-muted">
           <th className="w-10 pl-4 font-normal">
             <input
@@ -179,7 +194,7 @@ export function QueueTable({
           <th className="px-3 pr-4 font-medium">Status</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody className="max-md:block">
         {orders.map((o, i) => (
           <Row
             key={o.order_id}

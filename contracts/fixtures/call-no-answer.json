@@ -1,0 +1,24 @@
+{
+  "call_id": "call_no_answer_001",
+  "order_id": "ord_smudged_001",
+  "field_name": "drug.strength",
+  "status": "no_answer",
+  "to_number": "+15551234567",
+  "number_source": {
+    "kind": "fax_header",
+    "detail": "Fax header callback number; no independent agreement.",
+    "agreement": false
+  },
+  "question": "Can you confirm the strength of Metformin - is it 850 mg or 500 mg?",
+  "transcript": [],
+  "result": {
+    "outcome": "unclear",
+    "confirmed_value": null,
+    "confirmed_by": null,
+    "notes": "No answer after provider ringing timeout."
+  },
+  "decision": null,
+  "started_at": "2026-10-10T14:20:00Z",
+  "ended_at": "2026-10-10T14:20:45Z",
+  "error": "no_answer"
+}

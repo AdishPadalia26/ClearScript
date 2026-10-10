@@ -59,7 +59,7 @@ Mouse-free path for the smudged demo order: `J` `Enter` `J` `E` _500 mg_ `Enter`
 | Order                                | What it shows                                                                                                                                              |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ord_clean`                          | Metformin 500 mg, all green → approve → FHIR bundle                                                                                                        |
-| `ord_smudged`                        | Strength **red** (readers split 850/500, Textract 41 %), drug name yellow (look-alike), frequency yellow (days-supply mismatch). The call confirms 500 mg. |
+| `ord_smudged`                        | Strength **red** (readers split 850/500, OCR 41%), drug name yellow (look-alike), frequency yellow (days-supply mismatch). The call confirms 500 mg. |
 | `ord_controlled`                     | Oxycodone CII with refills → red; DEA checksum fails → red                                                                                                 |
 | `ord_processing`                     | Still being read                                                                                                                                           |
 | `ord_lisinopril`, `ord_atorvastatin` | Ready, so bulk approve is available                                                                                                                        |

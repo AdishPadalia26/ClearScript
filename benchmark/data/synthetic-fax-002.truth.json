@@ -1,0 +1,23 @@
+{
+  "fax_id": "synthetic-fax-002",
+  "patient": {
+    "name": "Morgan Patel",
+    "dob": "1984-05-02"
+  },
+  "drug": {
+    "name": "amoxicillin",
+    "strength": "500mg",
+    "quantity": "30"
+  },
+  "sig": {
+    "dose": "1 tablet",
+    "frequency": "twice daily",
+    "duration_days": "10 days"
+  },
+  "prescriber": {
+    "name": "Riley Brooks",
+    "npi": "1000000001",
+    "dea": "AB1234563"
+  },
+  "written_date": "2026-10-09"
+}

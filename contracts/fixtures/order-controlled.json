@@ -1,0 +1,113 @@
+{
+  "order_id": "ord_controlled_001",
+  "fax_id": "fax_controlled_001",
+  "page": 1,
+  "page_count": 1,
+  "received_at": "2026-10-10T14:10:00Z",
+  "status": "blocked",
+  "fields": {
+    "patient": {},
+    "drug": {
+      "drug.name": {
+        "name": "drug.name",
+        "label": "Medication",
+        "value": "Oxycodone",
+        "normalized": { "rxcui": "1049621", "schedule": "II" },
+        "reads": [
+          {
+            "source": "model_a",
+            "model": "nicrron-vision-a",
+            "value": "Oxycodone",
+            "evidence": { "page": 1, "bbox": [0.12, 0.31, 0.3, 0.36], "text_seen": "Oxycodone" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [],
+        "confidence": 0.92,
+        "triage": "green",
+        "reasons": ["Medication normalized against RxNorm."],
+        "risk": "high",
+        "resolution": null
+      },
+      "drug.refills": {
+        "name": "drug.refills",
+        "label": "Refills",
+        "value": "2",
+        "normalized": { "value": 2 },
+        "reads": [
+          {
+            "source": "ocr",
+            "model": null,
+            "value": "2",
+            "evidence": { "page": 1, "bbox": [0.62, 0.52, 0.65, 0.56], "text_seen": "2" },
+            "ocr_confidence": 88.5,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [
+          {
+            "rule": "controlled_refills",
+            "result": "fail",
+            "severity": "red",
+            "fields": ["drug.name", "drug.refills"],
+            "reason": "Schedule II prescriptions cannot authorize refills."
+          }
+        ],
+        "confidence": 0.9,
+        "triage": "red",
+        "reasons": ["Schedule II prescriptions cannot authorize refills."],
+        "risk": "high",
+        "resolution": null
+      }
+    },
+    "sig": {},
+    "prescriber": {
+      "prescriber.dea": {
+        "name": "prescriber.dea",
+        "label": "Prescriber DEA",
+        "value": "AB1234563",
+        "normalized": { "dea": "AB1234563" },
+        "reads": [
+          {
+            "source": "model_b",
+            "model": "nicrron-vision-b",
+            "value": "AB1234563",
+            "evidence": { "page": 1, "bbox": [0.12, 0.72, 0.31, 0.77], "text_seen": "AB1234563" },
+            "ocr_confidence": null,
+            "crop_url": null,
+            "call_id": null
+          }
+        ],
+        "checks": [
+          {
+            "rule": "dea_checksum",
+            "result": "fail",
+            "severity": "red",
+            "fields": ["prescriber.dea"],
+            "reason": "DEA number failed checksum validation."
+          }
+        ],
+        "confidence": 0.69,
+        "triage": "red",
+        "reasons": ["DEA number failed checksum validation."],
+        "risk": "high",
+        "resolution": null
+      }
+    },
+    "meta": {}
+  },
+  "counts": { "red": 2, "yellow": 0, "green": 1 },
+  "trace_url": "https://blockconvey.example/traces/ord_controlled_001",
+  "safety_notices": [],
+  "active_call_id": null,
+  "audit": [
+    {
+      "at": "2026-10-10T14:10:03Z",
+      "actor": "system",
+      "action": "order.created"
+    }
+  ]
+}

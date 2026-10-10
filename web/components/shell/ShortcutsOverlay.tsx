@@ -7,6 +7,7 @@ const GROUPS: { title: string; keys: [string[], string][] }[] = [
   {
     title: "Queue",
     keys: [
+      [["N"], "Review next order"],
       [["↑", "↓"], "Move between orders"],
       [["Enter"], "Open order"],
       [["U"], "Upload a fax"],

@@ -2,18 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { BarChart3, Inbox, Keyboard, Upload, WifiOff } from "lucide-react";
+import { useState } from "react";
+import { BarChart3, Inbox, Keyboard, RotateCw, ServerCrash, Upload } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDemo } from "@/app/providers";
 import { Button, Kbd } from "@/components/ui/button";
 import { Tip } from "@/components/ui/tooltip";
 import { UploadDialog } from "@/components/queue/UploadDialog";
 import { ShortcutsOverlay } from "./ShortcutsOverlay";
+import { UploadContext } from "./upload-context";
 import { useOrders } from "@/lib/api/hooks";
 import { cn } from "@/lib/cn";
+import { useConnection, type ConnectionView } from "@/lib/connection";
 import { env, isMock } from "@/lib/env";
 import { useHotkeys } from "@/lib/keyboard";
-import { useOrdersSocket, useSocketStatus } from "@/lib/realtime";
+import { useOrdersSocket } from "@/lib/realtime";
 
 const NAV = [
   {
@@ -25,56 +28,76 @@ const NAV = [
   { href: "/metrics", label: "Metrics", icon: BarChart3, match: (p: string) => p.startsWith("/metrics") },
 ] as const;
 
-function LivePill() {
-  const s = useSocketStatus();
-  const live = s === "live";
+const PILL: Record<ConnectionView["kind"], { box: string; dot: string }> = {
+  live: { box: "border-green/30 bg-green-bg text-green", dot: "bg-green" },
+  // Polling is a normal mode, not a warning: the data is current, just not pushed.
+  polling: { box: "border-rule-strong bg-surface text-muted", dot: "bg-faint" },
+  connecting: { box: "border-rule-strong bg-surface text-muted", dot: "bg-faint animate-pulse" },
+  down: { box: "border-red/30 bg-red-bg text-red", dot: "bg-red animate-pulse" },
+};
+
+function ConnectionPill({ view }: { view: ConnectionView }) {
+  const s = PILL[view.kind];
   return (
-    <Tip
-      content={
-        live
-          ? "Updates arrive in real time."
-          : "Live updates are down. Polling every 3 seconds while we reconnect."
-      }
-    >
+    <Tip content={view.detail}>
       <span
         role="status"
+        data-connection={view.kind}
+        tabIndex={0}
         className={cn(
           "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12.5px] font-medium",
-          live ? "border-green/30 bg-green-bg text-green" : "border-yellow/30 bg-yellow-bg text-yellow",
+          s.box,
         )}
       >
-        <span
-          className={cn("size-1.5 rounded-full", live ? "bg-green" : "bg-yellow animate-pulse")}
-          aria-hidden
-        />
-        {live ? "Live" : s === "connecting" ? "Connecting" : "Reconnecting"}
+        <span className={cn("size-1.5 rounded-full", s.dot)} aria-hidden />
+        {view.label}
+        <span className="sr-only">. {view.detail}</span>
       </span>
     </Tip>
   );
 }
 
-function useOnline() {
-  const [online, setOnline] = useState(true);
-  useEffect(() => {
-    const sync = () => setOnline(navigator.onLine);
-    sync();
-    window.addEventListener("online", sync);
-    window.addEventListener("offline", sync);
-    return () => {
-      window.removeEventListener("online", sync);
-      window.removeEventListener("offline", sync);
-    };
-  }, []);
-  return online;
+function NavLinks({ path, open, variant }: { path: string; open: number; variant: "rail" | "bar" }) {
+  return NAV.map(({ href, label, icon: Icon, match }) => {
+    const active = match(path);
+    return (
+      <Link
+        key={href}
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "relative flex flex-col items-center gap-0.5 rounded-md text-[11.5px] font-medium",
+          variant === "rail" ? "w-[56px] py-2" : "h-12 flex-1 justify-center",
+          active ? "bg-accent-bg text-accent" : "text-muted hover:bg-surface-2 hover:text-ink",
+        )}
+      >
+        <Icon size={18} aria-hidden />
+        {label}
+        {href === "/queue" && open > 0 ? (
+          <span
+            className={cn(
+              "tabular absolute min-w-4 rounded-full bg-red px-1 text-center text-[10px] leading-4 text-white",
+              variant === "rail" ? "top-1 right-1.5" : "top-1 left-[calc(50%+6px)]",
+            )}
+          >
+            {open}
+            <span className="sr-only"> orders need review</span>
+          </span>
+        ) : null}
+      </Link>
+    );
+  });
 }
 
 export function ConsoleShell({ children }: { children: React.ReactNode }) {
   useOrdersSocket();
   const path = usePathname();
   const demo = useDemo();
-  const online = useOnline();
+  const qc = useQueryClient();
+  const connection = useConnection();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [openUpload] = useState(() => () => setUploadOpen(true));
   const { data: orders } = useOrders();
   const open = orders?.filter((o) => o.status === "blocked" || o.status === "needs_review").length ?? 0;
 
@@ -84,7 +107,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-dvh overflow-hidden">
       <nav
         aria-label="Primary"
-        className="flex w-[68px] shrink-0 flex-col items-center gap-1 border-r border-rule bg-surface py-3"
+        className="hidden w-[68px] shrink-0 flex-col items-center gap-1 border-r border-rule bg-surface py-3 sm:flex"
       >
         <Link
           href="/queue"
@@ -93,78 +116,74 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
         >
           Cs
         </Link>
-        {NAV.map(({ href, label, icon: Icon, match }) => {
-          const active = match(path);
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "relative flex w-[56px] flex-col items-center gap-0.5 rounded-md py-2 text-[11.5px] font-medium",
-                active ? "bg-accent-bg text-accent" : "text-muted hover:bg-surface-2 hover:text-ink",
-              )}
-            >
-              <Icon size={18} aria-hidden />
-              {label}
-              {href === "/queue" && open > 0 ? (
-                <span className="tabular absolute top-1 right-1.5 min-w-4 rounded-full bg-red px-1 text-center text-[10px] leading-4 text-white">
-                  {open}
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
+        <NavLinks path={path} open={open} variant="rail" />
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b border-rule bg-surface px-4">
           <span className="font-semibold">ClearScript</span>
-          <span className="hidden truncate text-muted sm:inline">{env.pharmacyName}</span>
+          <span className="hidden truncate text-muted md:inline">{env.pharmacyName}</span>
           {isMock ? (
-            <span className="dev-only hidden rounded border border-rule-strong px-1.5 py-0.5 font-mono text-[11px] text-muted sm:inline">
+            <span className="dev-only hidden rounded border border-rule-strong px-1.5 py-0.5 font-mono text-[11px] text-muted md:inline">
               MOCK API
             </span>
           ) : null}
           <div className="ml-auto flex items-center gap-2">
-            <LivePill />
-            <Tip
-              content={
-                <span>
-                  Keyboard shortcuts <Kbd className="ml-1">?</Kbd>
-                </span>
-              }
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Keyboard shortcuts"
-                onClick={() => setHelpOpen(true)}
+            <ConnectionPill view={connection} />
+            <span className="hidden sm:inline-flex">
+              <Tip
+                content={
+                  <span>
+                    Keyboard shortcuts <Kbd className="ml-1">?</Kbd>
+                  </span>
+                }
               >
-                <Keyboard size={17} />
-              </Button>
-            </Tip>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Keyboard shortcuts"
+                  onClick={() => setHelpOpen(true)}
+                >
+                  <Keyboard size={17} />
+                </Button>
+              </Tip>
+            </span>
             <Button variant="primary" onClick={() => setUploadOpen(true)} aria-label="Upload fax">
               <Upload size={15} aria-hidden /> <span className="hidden sm:inline">Upload fax</span>
             </Button>
           </div>
         </header>
 
-        {!online ? (
+        {connection.kind === "down" ? (
           <div
             role="alert"
-            className="flex items-center gap-2 border-b border-yellow/30 bg-yellow-bg px-4 py-2 text-[13px] text-yellow"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-red/30 bg-red-bg px-4 py-2 text-[13px] text-red"
           >
-            <WifiOff size={15} aria-hidden /> You&apos;re offline. Changes won&apos;t save until the
-            connection is back.
+            <ServerCrash size={15} aria-hidden />
+            <span className="min-w-0 flex-1">
+              Can&apos;t reach the ClearScript server. Changes won&apos;t save until it&apos;s back; retrying
+              every 3 seconds.
+            </span>
+            <Button size="sm" onClick={() => void qc.refetchQueries({ type: "active" })}>
+              <RotateCw size={13} aria-hidden /> Retry now
+            </Button>
           </div>
         ) : null}
 
-        <main className="relative min-h-0 flex-1">{children}</main>
+        <main className="relative min-h-0 flex-1">
+          <UploadContext.Provider value={openUpload}>{children}</UploadContext.Provider>
+        </main>
+
+        <nav
+          aria-label="Primary"
+          className="flex shrink-0 gap-1 border-t border-rule bg-surface px-2 py-1 sm:hidden"
+        >
+          <NavLinks path={path} open={open} variant="bar" />
+        </nav>
       </div>
 
       {demo ? (
-        <div className="pointer-events-none fixed right-0 bottom-0 z-50 rounded-tl-md bg-ink/85 px-3 py-1 text-[12px] font-medium text-bg">
+        <div className="pointer-events-none fixed right-0 bottom-0 z-50 rounded-tl-md bg-ink/85 px-3 py-1 text-[12px] font-medium text-bg max-sm:bottom-14">
           Synthetic data
         </div>
       ) : null}

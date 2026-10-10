@@ -2,7 +2,7 @@
 
 export type Triage = "green" | "yellow" | "red";
 export type OrderStatus = "processing" | "needs_review" | "blocked" | "ready" | "approved" | "rejected";
-export type ReadSource = "model_a" | "model_b" | "model_c" | "textract" | "pharmacist" | "prescriber_call";
+export type ReadSource = "model_a" | "model_b" | "model_c" | "ocr" | "pharmacist" | "prescriber_call";
 
 export interface Evidence {
   page: number; // 1-indexed
@@ -15,7 +15,7 @@ export interface Read {
   model?: string | null;
   value: string | null;
   evidence: Evidence | null;
-  ocr_confidence: number | null; // 0..100, textract only
+  ocr_confidence: number | null; // 0..100, OCR source only
   crop_url?: string | null;
   call_id?: string | null;
 }

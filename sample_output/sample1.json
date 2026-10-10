@@ -1,0 +1,76 @@
+{
+  "patient": {
+    "name": {
+      "value": "Armando Coguin",
+      "confidence": 0.86,
+      "reasoning": "Handwritten name on the top Name line appears to read “Armando Coguin.”"
+    },
+    "age": {
+      "value": 29,
+      "confidence": 0.99,
+      "reasoning": "Age line clearly shows 29."
+    },
+    "sex": {
+      "value": "M",
+      "confidence": 0.99,
+      "reasoning": "Sex line clearly shows M."
+    }
+  },
+  "doctor": {
+    "name": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
+    },
+    "specialty": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
+    },
+    "registration_number": {
+      "value": "123457",
+      "confidence": 0.72,
+      "reasoning": "Handwritten number on the Lic. No. line appears to read 123457."
+    }
+  },
+  "medications": [
+    {
+      "name": {
+        "value": "Amoxicillin",
+        "confidence": 0.98,
+        "reasoning": "Medication line clearly reads Amoxicillin."
+      },
+      "strength": {
+        "value": "500 mg",
+        "confidence": 0.97,
+        "reasoning": "Medication line shows 500 mg after the drug name."
+      },
+      "dose": {
+        "value": "1 cap",
+        "confidence": 0.98,
+        "reasoning": "Signature directions state “1 cap.”"
+      },
+      "frequency": {
+        "value": "3x a day",
+        "confidence": 0.98,
+        "reasoning": "Signature directions state “3x a day.”"
+      },
+      "duration": {
+        "value": "seven days",
+        "confidence": 0.96,
+        "reasoning": "Second line of the directions states “seven days.”"
+      }
+    }
+  ],
+  "additional_information": {
+    "prescription_date": "12-03-90",
+    "diagnosis": null,
+    "notes": [
+      "Address: West Rembo, Makati City",
+      "(Himox)",
+      "Caps #21",
+      "PTR No. 1234567"
+    ],
+    "signature_present": true
+  }
+}
