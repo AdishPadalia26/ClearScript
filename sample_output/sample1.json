@@ -1,0 +1,71 @@
+{
+  "patient": {
+    "name": {
+      "value": "Armando Coquina",
+      "confidence": null,
+      "reasoning": null
+    },
+    "age": {
+      "value": 29,
+      "confidence": null,
+      "reasoning": null
+    },
+    "sex": {
+      "value": "M",
+      "confidence": null,
+      "reasoning": null
+    }
+  },
+  "doctor": {
+    "name": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
+    },
+    "specialty": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
+    },
+    "registration_number": {
+      "value": null,
+      "confidence": null,
+      "reasoning": null
+    }
+  },
+  "medications": [
+    {
+      "name": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      },
+      "strength": {
+        "value": "500 mg",
+        "confidence": null,
+        "reasoning": null
+      },
+      "dose": {
+        "value": 21,
+        "confidence": null,
+        "reasoning": null
+      },
+      "frequency": {
+        "value": "Take 1 capsule 3 times a day for seven days.",
+        "confidence": null,
+        "reasoning": null
+      },
+      "duration": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "additional_information": {
+    "prescription_date": "12-03-90",
+    "diagnosis": null,
+    "notes": [],
+    "signature_present": false
+  }
+}
