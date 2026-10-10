@@ -16,6 +16,27 @@ def _field(value: str | None, name: str) -> Field:
     return Field(name=name, value=value)
 
 
+def _truth_from_order(order: PrescriptionOrder) -> dict:
+    truth = {
+        "fax_id": order.fax_id,
+        "patient": {},
+        "drug": {},
+        "sig": {},
+        "prescriber": {},
+    }
+    for section_name, section in {
+        "patient": order.patient,
+        "drug": order.drug,
+        "sig": order.sig,
+        "prescriber": order.prescriber,
+    }.items():
+        for key, field in section.items():
+            truth[section_name][key] = field.value
+    if order.written_date is not None:
+        truth["written_date"] = order.written_date.value
+    return truth
+
+
 def generate_synthetic_order(fax_id: str, *, risky: bool = False) -> PrescriptionOrder:
     name = fake.name()
     patient_name = name
@@ -64,6 +85,8 @@ def write_synthetic_cases(count: int = 5, out_dir: str | Path = "benchmark/data"
         orders.append(order)
         payload = order.model_dump(mode="json")
         (out / f"{fax_id}.json").write_text(json.dumps(payload, indent=2))
+        truth = _truth_from_order(order)
+        (out / f"{fax_id}.truth.json").write_text(json.dumps(truth, indent=2))
     return orders
 
 

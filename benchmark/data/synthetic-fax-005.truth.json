@@ -1,0 +1,23 @@
+{
+  "fax_id": "synthetic-fax-005",
+  "patient": {
+    "name": "Joseph Chen",
+    "dob": "1986-08-04"
+  },
+  "drug": {
+    "name": "amoxicillin",
+    "strength": "500mg",
+    "quantity": "30"
+  },
+  "sig": {
+    "dose": "1 tablet",
+    "frequency": "twice daily",
+    "duration_days": "10 days"
+  },
+  "prescriber": {
+    "name": "Michelle Terrell",
+    "npi": "8084012345",
+    "dea": "AB1234567"
+  },
+  "written_date": "2026-09-15"
+}
