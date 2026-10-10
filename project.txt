@@ -1,0 +1,763 @@
+Fax to Fill — End-to-End Build Plan (PillSpark
+Track)
+Oct 10, 2026 · @Adish Padalia
+Executive summary
+We build ClearScript: an agent that turns a faxed prescription into a verified, structured
+order in under 30 seconds, and refuses to guess. Every field carries its evidence (the
+pixels it came from) and a calibrated confidence. Anything uncertain goes to a
+pharmacist, and the agent can close the loop itself by calling the prescriber's office to
+confirm.
+The hack-winning angle is not "OCR with an LLM." Every team will do that. Ours is three
+things judges can see:
+1. Calibrated uncertainty, measured. We report a silent error rate (wrong fields we did
+not flag) on a 200-fax synthetic benchmark, against a naive single-pass LLM baseline.
+That one number is the pitch.
+2. Closed-loop clarification. A flagged field becomes a one-click outbound call to the
+prescriber's office through an ElevenLabs voice agent. The confirmed answer is
+written back into the order with the call transcript as evidence.
+3. Every decision is auditable. Each extraction, lookup and rule check is traced through
+Block Convey, so a pharmacist or a state board inspector can replay why a field was
+accepted or flagged.
+The demo proves one claim: on the faxes where a naive pipeline silently ships a 10x dosing
+error, ClearScript stops and asks.
+Problem and users
+Faxed prescriptions are retyped by hand, and the dangerous failure is not a slow entry but
+a confident wrong one. A technician who misreads 5 mg as 50 mg, or hydroxyzine as
+hydralazine, produces an order that looks clean and passes every downstream screen.
+Who uses it
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 1 of 21
+Pharmacy technician (primary operator): today types each fax into the pharmacy
+system field by field. With ClearScript they review a pre-filled order and touch only
+flagged fields.
+Pharmacist (final verifier): legally signs off on every order. Wants to know why a field
+is trusted and wants unclear items resolved before they reach the verification queue.
+Pharmacy owner or ops lead (buyer): pays for throughput and fewer errors. Cares
+about orders per tech-hour, callbacks avoided and audit readiness.
+What is hard about faxes
+200 dpi or lower, 1-bit, skewed, with streaks and toner noise.
+Mixed layouts: EHR-printed forms, handwritten pads, multi-Rx pages, cover sheets.
+Handwritten numerals and drug names, where one stroke flips meaning.
+Abbreviated directions ("1 po bid x10d prn") that must be parsed, not copied.
+Open question for the PillSpark founder at kickoff: which pharmacy system do orders land
+in, and what does their current error or callback rate look like?
+Product: fax to verified order
+A fax becomes a verified order in seven steps, and a human touches it only where the
+system is unsure.
+1. Fax arrives. Through an eFax webhook, email-to-fax inbox or manual upload (PDF or
+TIFF). Each page becomes a FaxJob with a status.
+2. Pages are cleaned and split. Deskew, denoise, upscale. A classifier drops cover sheets
+and splits multi-prescription pages into one order each.
+3. Three independent reads. Three different vision models read the page through the
+Nicrron gateway, and AWS Textract reads it in parallel. Each returns every field with the
+exact text it saw and where it saw it.
+4. Values are normalized against real registries. Drug to RxNorm, prescriber to the NPI
+Registry, directions to a structured sig, dates and DOB to ISO.
+5. Rules check the order as a whole. Dose range, quantity against days supply, look-alike
+drug names, DEA checksum, controlled-substance limits.
+6. Each field is triaged. Green fields are pre-accepted, yellow need a glance, red block
+the order. Every flag shows a one-line reason.
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 2 of 21
+7. Pharmacist resolves and approves. In the review console they confirm or edit flagged
+fields, or click Call prescriber. The voice agent confirms the field with the prescriber's
+office and writes the answer back with the transcript attached. Approval emits a FHIR
+MedicationRequest and an audit record.
+The operator's experience: open the queue, see a fax with two yellow fields and one red,
+resolve them in about 20 seconds, approve.
+System architecture
+Seven stages run top to bottom, and each sponsor plugs in at the one stage it serves.
+ClearScript pipeline · 7 stages, 4 sponsor services
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 3 of 21
+Each stage is its own module, its own API boundary and its own trace span, so any stage
+can be swapped, tested on the benchmark, or replayed for one fax. Only the review
+console needs a human; everything above it runs in seconds.
+Core data contract
+One Pydantic schema is the contract between all four workstreams; lock it in the first 30
+minutes. The key idea: no field is a bare value. Every field carries its reads, its evidence
+and its triage.
+class Evidence(BaseModel):
+page: int
+bbox: tuple[float, float, float, float] # normalized 0..1
+text_seen: str # exact characters read
+class Read(BaseModel):
+source: Literal["model_a", "model_b", "model_c", "textract",
+"pharmacist", "prescriber_call"]
+value: str | None
+evidence: Evidence | None
+ocr_confidence: float | None # Textract word confidence,
+0..100
+class Field(BaseModel):
+name: str # e.g. "drug.strength"
+value: str | None # resolved value, None if
+unresolved
+normalized: dict | None # e.g. {"rxcui": "860975"}
+reads: list[Read]
+checks: list[Check] # rule results touching this
+field
+confidence: float # 0..1, calibrated
+triage: Literal["green", "yellow", "red"]
+reasons: list[str] # human-readable, shown in UI
+class PrescriptionOrder(BaseModel):
+order_id: str
+fax_id: str
+patient: dict[str, Field] # name, dob, address, phone
+drug: dict[str, Field] # name, strength, form, quantity, refills,
+daw
+sig: dict[str, Field] # dose, route, frequency, duration, prn,
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 4 of 21
+raw
+prescriber: dict[str, Field] # name, npi, dea, phone, address,
+signature_present
+written_date: Field
+status: Literal["needs_review", "blocked", "ready", "approved",
+"rejected"]
+audit: list[AuditEvent]
+Fields we extract (v1):
+Pipeline stages in detail
+Seven stages, each a pure function from the previous stage's output, so each can be
+tested and traced on its own.
+1. Ingest ( ingest/ )
+FastAPI endpoints: POST /faxes (upload), POST /webhooks/efax (provider
+webhook).
+Split PDF or multi-page TIFF into PNG pages at 300 dpi with pdf2image / Pillow.
+Store originals in S3 (or local data/ in dev), keyed by fax_id . Hash each page to
+dedupe resends.
+2. Preprocess ( preprocess/ )
+Group Fields Why it matters
+Patient name, DOB, address, phone Patient match in the pharmacy
+system
+Drug name, strength, form, quantity, refills,
+DAW
+The order itself; strength is the top
+error source
+Directions dose, route, frequency, duration, PRN,
+raw sig
+Label text and days-supply math
+Prescriber name, NPI, DEA, phone, address,
+signature present
+Legal validity and the callback
+number
+Meta written date Expiry and controlled-substance
+rules
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 5 of 21
+OpenCV: deskew by Hough line angle, median denoise, adaptive threshold, 2x upscale
+for small text.
+Keep both the cleaned and the original image. Models read the cleaned one; the UI
+shows the original, because a pharmacist trusts what was actually sent.
+Page classifier (one cheap vision call): cover_sheet | prescription |
+multi_prescription | other . Multi-Rx pages get one order per prescription block.
+3. Extract ( extract/ )
+Three model reads, in parallel, through the Nicrron OpenAI-compatible gateway: for
+example a Claude, a GPT and a Gemini vision model. Different model families make
+different mistakes, so agreement among them means more than three runs of one
+model.
+Each call uses strict JSON output against the schema and must return text_seen and
+a bounding box for every field. A missing evidence string counts as no read.
+Textract read with AnalyzeDocument (FORMS) on the bytes, synchronously. Keep
+per-word confidence scores. Map key-value pairs to fields with the label aliases from
+the prior repo.
+Prompt rule: "If you cannot read a character, output ? in its place. Never infer a value
+from context." This turns illegibility into a visible signal.
+4. Normalize ( normalize/ )
+Drug: RxNav approximateTerm and getDrugs to RxNorm concept (RxCUI),
+ingredient, strength, dose form. Record the match score.
+Prescriber: NPI Registry API by NPI, then by name + state. Compare name, address and
+phone with the fax.
+DEA: format and checksum (sum of digits 1, 3, 5 + 2 × sum of digits 2, 4, 6; last digit
+must equal the final digit of that total). Second letter should match the prescriber's
+last-name initial.
+Sig: an LLM parse into {dose, unit, route, frequency_per_day, duration_days,
+prn, indication} plus a deterministic expander for common Latin abbreviations (po,
+bid, tid, qhs, prn). Both must agree.
+Dates: dateutil , rejecting ambiguous day/month orders instead of guessing.
+5. Verify ( verify/ ) — rules that look at the whole order. Each rule returns pass, warn or
+fail with the fields it touches.
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 6 of 21
+6. Triage ( triage/ ) — combine signals into a per-field confidence and a color (next
+section).
+7. Output ( output/ )
+On approval: FHIR R4 MedicationRequest + Patient + Practitioner JSON, plus a
+flat CSV row for pharmacy systems that import files.
+Every order keeps its full audit log: reads, checks, edits, calls, approver, timestamps.
+Confidence and safety model
+Confidence comes from measurable signals, never from a model saying how sure it is, and
+it is calibrated on labeled data so that "0.95" really means right 95% of the time.
+Signals per field
+Rule Fails when Severity
+Strength exists Strength not a marketed strength for that RxNorm
+ingredient + form
+Red
+Dose range Daily dose above label maximum (from openFDA
+label or a curated table)
+Red
+Look-alike/sound-alike Drug name is on the ISMP confused-names list and
+reads disagree or the match score is low
+Red
+Days supply quantity ÷ (dose × frequency) far from duration
+written
+Yellow
+DEA checksum Invalid checksum or initial mismatch on a
+controlled drug
+Red
+Controlled substance Schedule II with refills, or written date past the
+allowed window
+Red
+Prescriber match NPI name or address does not match the fax Yellow
+Signature No signature detected Red
+Patient age DOB implausible, or pediatric patient with an adult-
+only drug
+Yellow
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 7 of 21
+Scoring
+A small logistic regression turns the signals into a probability that the field is correct,
+trained on the synthetic benchmark where ground truth is known. Then isotonic
+calibration on a held-out split. Simple, explainable, and every coefficient can be shown to a
+judge.
+P(\text{correct}) = \sigma\left(w_0 + w_1 \cdot \text{agree}_{\text{models}}
++ w_2 \cdot \text{agree}_{\text{ocr}} + w_3 \cdot \text{conf}_{\text{ocr}} +
+w_4 \cdot \text{match}_{\text{registry}} - w_5 \cdot \text{illegible}\right)
+Triage thresholds (per risk class, tuned on the benchmark)
+Green: P(correct) ≥ 0.99 for high-risk fields, ≥ 0.97 for others, and no failing rule.
+Yellow: below green, or any warn-level rule.
+Red: any red rule, any illegible high-risk field, or reads disagree on drug name or
+strength.
+Hard stops (never auto-green, whatever the score)
+Strength or drug name where the 3 model reads are not unanimous.
+Any Schedule II drug: every field at least yellow, pharmacist must touch it.
+Signal How it is computed Weight of evidence
+Model agreement Share of the 3 model reads that
+match after normalization
+Strongest single signal
+OCR agreement Textract value matches the model
+majority
+Independent engine, different
+failure modes
+OCR word
+confidence
+Minimum Textract confidence over
+the field's words
+Catches smudged characters
+Illegible marker Any read contains ? Forces at least yellow
+Registry match RxNorm / NPI match score, exact or
+fuzzy
+Confirms the value exists in the
+real world
+Rule results Any failing check touching the field Red if severity red
+Field risk class Strength, quantity, drug name, DEA
+are high-risk
+Raises the bar to go green
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 8 of 21
+A value that exists in no registry (unknown drug, invalid NPI).
+Missing signature.
+How thresholds are chosen: we pick the green cutoff that keeps the silent error rate
+under a target (for example 0.5% of fields) and report the flag rate that costs. The
+tradeoff curve is a demo slide: "we flag 18% of fields to keep silent errors near zero; the
+naive pipeline flags nothing and silently gets 6% wrong." Those numbers are placeholders
+until the benchmark runs.
+Reuse from the credentialing repo
+About a third of AI-Agent-for-Healthcare-Licensing-and-Credentialing ports over, mostly
+the Textract layer and the hybrid LLM + OCR idea. The confidence logic must be rebuilt,
+because it hardcodes the very guessing this track penalizes.
+Source file What we take Change for ClearScript
+backend/0_textract_cv_data.py build_block_map ,
+get_text_for_block ,
+extract_kv ,
+extract_lines ,
+extract_tables
+Switch async S3 job to
+sync
+analyze_document on
+bytes; keep each word's
+Confidence and
+Geometry.BoundingBox
+instead of dropping
+them
+backend/0_textract_cv_data.py LLM primary +
+Textract cross-check
+idea
+Becomes 3 model reads
++ Textract;
+disagreement flags the
+field instead of picking a
+winner
+backend/0_textract_cv_data.py pick_best and its
+fixed 0.9 / 0.7 / 0.4
+scores
+Delete. Replaced by the
+calibrated scorer
+backend/0_textract_cv_data.py is_npi , NPI_RE ,
+PHONE_RE , DOB_RE
+NPI becomes exactly 10
+digits with the Luhn
+check (prefix 80840);
+add DEA checksum
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 9 of 21
+Tell the organizers at kickoff that you are adapting your own prior helpers, and say it in the
+demo. A founder who is hiring respects reuse that is disclosed.
+Sponsor integrations
+Each sponsor does a job in the pipeline that would be worse without it, which is what
+makes the integration credible to judges.
+Source file What we take Change for ClearScript
+backend/02_map_fields_gemini.py normalize_value
+(phone, date),
+RapidFuzz fallback,
+flatten_dict
+Reused for prescriber-
+name and drug-name
+fuzzy matching; date
+parsing rejects
+ambiguous orders
+backend/generate_synthetic_cvs.py Bedrock Claude
+generation loop with
+controlled
+randomness
+Retargeted to generate
+prescriptions; output
+rendered to images and
+degraded
+frontend/src/lib/s3.ts ,
+api/upload/route.ts
+Presigned S3 upload Fax upload in the Next.js
+console
+frontend/(user)/upload/page.tsx react-pdf viewer
+setup
+Base of the fax viewer;
+we add bounding-box
+overlays
+01_extract_fields.py ,
+03_fill_pdf.py
+Nothing PDF form filling is the
+reverse direction
+Auth, history, admin pages Nothing for v1 Rebuild auth properly
+later (see Security)
+Sponsor Its job in ClearScript Where in the pipeline
+Nicrron
+gateway
+Runs the 3-model ensemble through one
+OpenAI-compatible API, with failover and
+a per-request usage log
+Extract, page classifier, sig
+parser
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 10 of 21
+Nicrron: the ensemble
+Point the OpenAI SDK at https://api.nicrron.ai/v1 . Three calls, three model
+families, one client.
+The pitch line: "three independent readers from three labs; we trust a strength only
+when all three agree." Different labs mean less correlated errors.
+Gateway failover keeps the pipeline up if one provider stalls. Its usage log gives cost
+per fax, which goes in the business slide.
+Verify at kickoff that vision input passes through the gateway for the models we pick;
+their site lists chat and image models but does not say so explicitly. Fallback: Claude on
+Bedrock.
+ElevenLabs: closing the loop
+An ElevenLabs agent with a prompt scoped to one job: confirm specific prescription
+fields with a prescriber's office, never give medical advice, never accept changes to
+anything not asked about.
+The backend calls POST /v1/convai/twilio/outbound-call with agent_id ,
+agent_phone_number_id , to_number , and the question passed in
+conversation_initiation_client_data.dynamic_variables (pharmacy name,
+prescriber, the field in doubt, the candidate values).
+Example question: "Calling from Main Street Pharmacy about a prescription Dr. Lee
+faxed today for a patient with initials J.D. Can you confirm whether the metformin
+strength is 500 or 850 milligrams?"
+Sponsor Its job in ClearScript Where in the pipeline
+ElevenLabs Voice agent that calls the prescriber's
+office to confirm a flagged field, then
+returns a structured answer
+Review console, "Call
+prescriber"
+Block Convey Traces every agent step (each read,
+lookup, rule, call) for audit and debugging;
+Evaluators and Synthetic Scenarios run
+our benchmark
+Whole pipeline + evaluation
+Tavily Agent web search to find and verify the
+prescriber office's callback number, and
+to fetch current drug safety info (recalls,
+shortages, label updates)
+Normalize + Verify
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 11 of 21
+When the call ends, the transcript and a structured result ( confirmed_value ,
+confirmed_by ) attach to the field as a prescriber_call read. The field goes green
+only after the pharmacist accepts it.
+Pharmacist clicks to start every call. No autonomous calling in v1.
+Demo: one teammate's phone plays the prescriber's office, live on stage.
+Block Convey: auditability as a feature
+Export OpenTelemetry spans for each stage (their site lists OpenTelemetry, Anthropic
+and Bedrock integrations). One trace per fax; each field's reads and checks are child
+spans.
+Pitch line: "For any order, we can replay exactly why each field was accepted or
+flagged." That answers the inspector's question and the founder's debugging question
+at once.
+Use their Evaluators to score field accuracy and silent error rate on every benchmark
+run, and Synthetic Scenarios to stress-test the voice agent with difficult office staff.
+Synthetic data only: their site links a HIPAA page but gives no detail, so no real PHI goes
+in until a BAA exists.
+Tavily: real-world checks
+Fax headers often lack a callback number or show the wrong one. Search for the
+prescriber's practice and cross-check with the NPI Registry phone before the voice
+agent dials.
+Look up current FDA safety notices and shortages for the matched drug, shown as an
+info badge.
+Only public data goes into queries: drug names, prescriber name and NPI. Never
+patient data.
+Pharmacist review console
+The console is built for one question per field: "Do I trust this, and why?" Four screens.
+1. Queue
+One row per order: received time, patient initials, drug, prescriber, and a count of red /
+yellow fields.
+Sorted by red first, then age. Orders with no flags show Ready and can be approved in
+bulk only if no field is high-risk.
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 12 of 21
+Live updates over WebSocket as faxes finish processing.
+2. Order review (the core screen)
+Left: the original fax image, zoomable. Hovering a field on the right draws its bounding
+box on the image.
+Right: fields grouped as Patient, Drug, Directions, Prescriber. Each shows its value, a
+colored dot and a reason line, such as "2 of 3 readers saw 50 mg, 1 saw 5 mg" or "DEA
+checksum fails."
+Field drawer: click a field to see each reader's value and the exact crop of the image it
+read, side by side. Pharmacists decide faster from a crop than from a number.
+Actions per field: Accept, Edit (typing tracked as a pharmacist read), or Call
+prescriber.
+Approve is disabled while any red field remains. Keyboard: J/K move between flags,
+Enter accepts, E edits.
+3. Call panel
+Shows the number being dialed and where it came from (fax header, NPI Registry,
+Tavily result), the question, a live transcript, then the structured answer with Accept /
+Reject.
+4. Metrics
+Benchmark results: field accuracy, silent error rate, flag rate, the threshold tradeoff
+curve, and the naive baseline.
+Operational: median time to process a fax, median time to approve, flags per order,
+calls made and resolved.
+Design rules
+Red, yellow and green always come with text, never color alone.
+The original image, not the cleaned one, is what the pharmacist sees.
+Nothing in the UI shows a value without showing where it came from.
+Evaluation
+We win on a number, so the benchmark is a first-class deliverable: 200 synthetic faxes
+with exact ground truth, scored against a naive baseline on every commit.
+Building the benchmark
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 13 of 21
+1. Generate orders. Faker for patients and prescribers (fake NPIs with valid Luhn digits,
+fake DEAs with valid checksums), real drugs and strengths sampled from RxNorm,
+realistic sigs. Adapted from the prior repo's Bedrock generator.
+2. Render. 4–5 HTML/Jinja templates (EHR-printed form, clinic letterhead, prescription
+pad) to PNG with Playwright. Handwriting fonts for 30% of fields.
+3. Degrade. Augraphy fax and scan pipelines: 1-bit thresholding, 200 dpi, skew, streaks,
+toner noise, JPEG artifacts. Three severity levels.
+4. Inject traps into about 25% of faxes, each labeled: 5 vs 50 mg ambiguity, look-alike
+drug names, invalid DEA, missing signature, quantity that contradicts the sig, Schedule
+II with refills.
+5. Split 100 for training the scorer, 50 for calibration, 50 held out for reported numbers.
+Metrics
+Baselines
+Naive: one vision model, one pass, values taken as-is. This is what most teams will
+build.
+Ablations: remove the ensemble, remove Textract, remove registry checks, remove
+rules. Each shows how much silent error it prevents, which justifies every component.
+Metric Definition Why it matters
+Silent error rate Fields that are wrong and green,
+over all fields
+The headline: errors that would
+reach a patient
+Field accuracy Fields whose final value is right,
+before review
+Raw extraction quality
+Flag rate Fields marked yellow or red Pharmacist workload
+Flag precision Flagged fields that were actually
+wrong
+Whether flags are worth
+reading
+Trap catch rate Injected traps that ended red or
+yellow
+Safety on the worst cases
+Calibration error
+(ECE)
+Gap between stated confidence
+and actual accuracy
+Proof that confidence means
+something
+Cost and latency
+per fax
+From the Nicrron usage log and
+timers
+Business case
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 14 of 21
+Real-world check: if PillSpark can share even 5 de-identified real faxes, run them and
+report separately. Synthetic numbers are a proxy; say so on the slide.
+Team of 4
+Four vertical owners, joined by one schema and one contract each. Nobody waits on
+anyone after the schema is locked, because every module ships with a fixture-backed
+stub first.
+Contracts to agree up front
+schema.py (the data contract above), owned by A, changed only by PR with B and C
+reviewing.
+Role Owns Delivers to others Depends on
+A — Extraction lead
+(you; the Textract
+code is yours)
+Ingest, preprocess,
+3-model ensemble
+via Nicrron, Textract
+port, page classifier
+extract(fax) ->
+list[Field with
+reads]
+Schema
+B — Verification
+lead
+RxNorm, NPI, DEA,
+sig parser, rules
+engine, Tavily
+lookups, confidence
+scorer + calibration
+verify(order) ->
+order with checks,
+confidence, triage
+A's reads, D's
+benchmark for
+training
+C — Product lead Next.js console, fax
+viewer with box
+overlays, queue,
+review actions,
+ElevenLabs call flow,
+FHIR output
+The demo itself API contract from
+A and B
+D — Data, eval and
+platform lead
+Synthetic fax
+generator, Augraphy,
+trap injection,
+benchmark runner,
+Block Convey
+tracing, Docker, CI,
+the pitch deck
+Benchmark files,
+metrics, traces, deploy
+Everyone's
+modules for end-
+to-end runs
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 15 of 21
+REST API: POST /faxes , GET /orders?status= , GET /orders/{id} , POST
+/orders/{id}/fields/{name}/resolve , POST /orders/{id}/fields/{name}/call ,
+POST /orders/{id}/approve . Owned by C, implemented by A and B.
+Benchmark format: benchmark/{fax_id}.png + benchmark/{fax_id}.truth.json
+matching the schema. Owned by D.
+Integration rhythm
+1. Everyone builds against stubs and three hand-made fixture faxes.
+2. First end-to-end run on one fax, then the full benchmark.
+3. Freeze features; tune thresholds on the benchmark; rehearse the demo twice with all
+four people in their speaking roles.
+Tech stack and repo structure
+Python for the pipeline, TypeScript for the console, one monorepo, one docker compose
+up .
+Layer Choice Why
+API FastAPI + Pydantic v2 Schema doubles as validation and
+OpenAPI docs
+Jobs Async tasks with asyncio (Celery +
+Redis when scaling)
+4 parallel reads per page without
+blocking
+Models Nicrron gateway (OpenAI SDK);
+Claude on Bedrock as fallback
+One client, three labs, failover
+OCR AWS Textract AnalyzeDocument
+(FORMS)
+Ported code; per-word confidence
+Images OpenCV, Pillow, pdf2image Preprocessing
+Registries RxNav REST, NPI Registry API,
+openFDA
+Free, public, no key needed
+Web
+lookups
+Tavily Callback numbers, safety notices
+Voice ElevenLabs Agents + Twilio number Outbound clarification calls
+Database Postgres (SQLite in dev) via SQLModel Orders, fields, audit log
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 16 of 21
+clearscript/
+api/ # FastAPI app, routes, websocket
+core/schema.py # the data contract
+pipeline/
+ingest/ preprocess/ extract/ normalize/ verify/ triage/ output/
+integrations/ # nicrron.py, textract.py, rxnav.py, npi.py, tavily.py,
+elevenlabs.py
+observability/ # otel setup, span helpers
+benchmark/
+generate/ # orders, templates, render, degrade, traps
+run.py # scores pipeline vs truth, writes metrics.json
+web/ # Next.js console
+data/fixtures/ # 3 hand-made faxes for stubs and tests
+tests/
+docker-compose.yml
+.github/workflows/benchmark.yml
+Security and compliance
+The hackathon build uses synthetic data only; the production design keeps PHI inside
+vendors with a signed BAA and logs every access.
+Hackathon rules
+No real patient data anywhere: generated faxes only, unless PillSpark provides de-
+identified samples.
+Layer Choice Why
+Storage S3 (local folder in dev) Fax originals
+Tracing OpenTelemetry → Block Convey Audit and debugging
+Console Next.js 15, Tailwind, react-pdf / canvas
+overlays
+Ported from the prior repo
+Data Faker, Jinja, Playwright, Augraphy Synthetic faxes
+Scoring scikit-learn (logistic regression,
+isotonic)
+Explainable calibration
+Ops Docker Compose, GitHub Actions Benchmark runs on every PR
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 17 of 21
+Keys in .env , never committed. The prior repo committed a virtualenv and binaries;
+add a proper .gitignore from the start.
+Production posture (what we tell the founder)
+BAAs before PHI: AWS (Textract, S3, Bedrock) is HIPAA-eligible under a BAA. Each
+model provider behind the gateway, ElevenLabs, Twilio and the tracing vendor need a
+BAA or must receive no PHI. Until then, route PHI-bearing calls to Bedrock only.
+Minimum necessary: the voice agent says patient initials and drug, not full name and
+DOB, unless the office asks to verify identity. Tavily queries carry only public
+prescriber and drug data.
+Encryption: TLS in transit; S3 and Postgres encrypted at rest with KMS keys.
+Access: SSO with role-based access (technician, pharmacist, admin). Only a
+pharmacist can approve.
+Audit trail: every view, edit, call and approval is an append-only AuditEvent with user
+and timestamp, kept for the retention period pharmacy boards require. Block Convey
+traces mirror it for debugging, with PHI redacted from span attributes.
+Human in the loop by design: the system never dispenses or transmits an order on its
+own. A pharmacist approves every order, which keeps it decision support rather than
+an autonomous system.
+Retention: fax images kept per state pharmacy rules, then deleted on schedule.
+Open question for the founder: which pharmacy states and systems they serve first, since
+record-retention rules vary by state.
+Startup readiness
+The wedge is the moment between fax arrival and pharmacist verification; the moat is the
+labeled correction data every pharmacist edit creates.
+Wedge: independent and small-chain pharmacies that still receive a large share of
+prescriptions by fax and have no data-entry team. We sit in front of their existing
+pharmacy system and hand it a clean order, so there is no rip-and-replace.
+Why now: vision models finally read messy handwriting well enough, and an ensemble
+with calibrated confidence makes it safe to rely on them where it matters.
+Pricing (proposal to test): per processed fax, with a monthly minimum per store. Bundles
+a number of voice clarification calls. The Nicrron usage log gives our cost per fax, so gross
+margin is known from day one.
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 18 of 21
+Go-to-market
+1. Design partners through PillSpark's existing pharmacy relationships.
+2. Integrations with the pharmacy management systems those stores use, starting with
+file import, then direct API.
+3. Case study built on measured outcomes: tech minutes per order, callbacks avoided,
+errors caught.
+Moat
+Every pharmacist correction is a labeled example of exactly where models fail on real
+faxes. That data retrains the scorer and, later, a fine-tuned reader. Competitors
+without the review loop cannot collect it.
+Per-prescriber priors: once a clinic's form layout and a doctor's handwriting have been
+seen, accuracy on their next fax goes up.
+The audit trail makes it the system of record for how each order was verified, which is
+sticky.
+Roadmap after the hackathon
+1. Pilot: one pharmacy, shadow mode (we process in parallel, techs still type), measure
+accuracy on real faxes.
+2. Assisted: techs review our pre-filled orders; thresholds tuned on their corrections.
+3. Closed loop: voice clarification calls in production; e-prescribing (NCPDP SCRIPT)
+intake alongside fax so one queue covers both.
+4. Expand: refill requests, prior authorization forms, and lab orders use the same read,
+verify, flag pipeline.
+Demo script and judge Q&A
+Five minutes, four speakers, one story: the naive pipeline ships a 10x error, ClearScript
+stops and asks, the doctor's office confirms on a live call.
+Script
+1. Hook (D, 30 s). "This fax says metformin. Is it 500 or 850? A naive LLM pipeline picks
+one with total confidence. Here's what it shipped." Show the naive output with the
+wrong strength, no warning.
+2. Clean fax (A, 45 s). Drop a clean fax into the queue. It processes in seconds, every
+field green, each traceable to its box on the image. Approve. FHIR JSON appears.
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 19 of 21
+3. The dangerous fax (B, 75 s). Drop the smudged one. Strength goes red: "2 of 3 readers
+saw 850, 1 saw 500, Textract confidence 41%." A look-alike drug name also flags. Open
+the field drawer to show the three crops side by side.
+4. Close the loop (C, 75 s). Click Call prescriber. The number source is shown (NPI
+Registry, confirmed with Tavily). A teammate's phone rings on stage, playing the office.
+The agent asks; she answers "500." The transcript lands on the field. Pharmacist
+accepts, order approves.
+5. The proof (D, 45 s). Benchmark slide: silent error rate and trap catch rate vs the naive
+baseline, the threshold tradeoff curve, cost per fax. Open the Block Convey trace for
+the order just approved.
+6. Close (A, 30 s). "Every correction trains it. We'd ship a shadow-mode pilot with one of
+your pharmacies next week."
+Have ready: a pre-recorded video of the full demo in case of Wi-Fi or phone failure, and
+pre-processed results for every demo fax.
+Likely judge questions
+Question Answer
+Why not one strong model? Our ablation shows how many silent errors one
+model lets through; three labs disagreeing is the
+uncertainty signal.
+Isn't calling the doctor slow? It happens only on red fields, starts with one click,
+and replaces the call the pharmacist would make
+anyway.
+How is confidence calibrated? Logistic regression over measurable signals,
+isotonic calibration on held-out faxes; we show the
+reliability curve.
+Synthetic data only? Yes, with traps modeled on known error types; first
+pilot step is shadow mode on real faxes.
+HIPAA? Synthetic data now; production keeps PHI with
+BAA-covered vendors and logs every access.
+Cost per fax? Measured from the gateway usage log; shown on
+the slide.
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 20 of 21
+Risks and mitigations
+The biggest risk is integration, not modeling; every external dependency has a fallback.
+Question Answer
+What would you build first if hired? Shadow-mode pilot plus the correction loop,
+because it creates the data moat.
+Risk Mitigation
+Nicrron gateway does not pass images for a
+chosen model
+Test at kickoff; swap model, or fall back to
+Claude on Bedrock for that reader
+Model rate limits or latency during the demo Pre-process demo faxes and cache results;
+run the live one only for the hero fax
+ElevenLabs outbound call fails (Twilio
+number, venue signal)
+Pre-recorded call clip; browser-based
+ElevenLabs session as a backup that needs
+no phone network
+Bounding boxes from models are imprecise Prefer Textract geometry for a field when its
+text matches; model boxes only as fallback
+Synthetic faxes are too clean to be
+convincing
+Highest Augraphy severity for demo faxes;
+handwriting fonts; ask PillSpark for de-
+identified samples
+Scorer overfits a small benchmark Report held-out numbers only; keep the
+model to a handful of features
+Flag rate too high, pharmacists ignore flags Show the tradeoff curve; tune per risk class;
+low-risk fields can go green more easily
+Prior-repo reuse questioned Disclose at kickoff and in the demo
+Team blocked on one another Schema locked first; every module ships a
+fixture-backed stub before real logic
+Fax to Fill — End-to-End Build Plan (PillSpark Track)
+Page 21 of 21
