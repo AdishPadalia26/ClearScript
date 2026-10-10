@@ -1,211 +1,223 @@
-# ClearScript / PillSpark
+# ClearScript - Fax to Fill
 
-A fax-to-verified-order pipeline for prescription intake and pharmacist review. The project ingests faxed prescriptions, extracts key fields, normalizes the values, verifies them against rules and registries, scores confidence, and surfaces unsafe or ambiguous orders for human review.
+ClearScript turns messy faxed prescription images into pharmacist-reviewable, evidence-backed orders instead of asking pharmacy teams to trust raw OCR. When fields are missing or risky, the workflow can route to an ElevenLabs voice agent to call the prescriber, use Tavily for web search and public validation, and capture Prism traces so every agent action, link, decision, and model behavior is explainable.
 
-This repository is a working baseline for the broader PillSpark workflow, with live instrumentation, a benchmark harness, and a verification/evaluation layer that now validates against real external data sources when available.
+The product hook is simple: fax intake is still slow, manual, and error-prone, but prescriptions cannot tolerate silent guesses. ClearScript reads the image, verifies the claim, flags uncertainty, shows the evidence, and only lets safe orders move forward.
 
-## Project goal
+![ClearScript system design](artifacts/clearscript_system_design.jpg)
 
-Turn a faxed prescription into a trusted order decision with:
-- OCR / extraction from the fax image
-- normalized field values
-- rule-based verification checks
-- external registry validation (RxNorm and NPI)
-- confidence scoring and triage
-- pharmacist review or approval flow
-- auditability via PRISM tracing
-- benchmark-driven evaluation and quality tracking
+## Why It Is Better
 
-## Core architecture
+| Dimension | Naive fax OCR | ClearScript |
+| --- | --- | --- |
+| Missing data | Leaves gaps or forces manual re-entry | Escalates missing/high-risk fields into pharmacist review and prescriber-call flow |
+| Validation | Extracted text is treated as truth | RxNorm, NPI, DEA, sig, date, and rule checks verify values before approval |
+| External grounding | No public-source validation | Tavily web search supports prescriber/contact and safety validation |
+| Explainability | Hard to know why a field was accepted | Prism traces capture model calls, agents, evidence, and decisions |
+| Review workflow | Raw document plus manual judgment | Queue, triage badges, evidence drawer, resolve actions, call transcript, audit trail |
+| Output | Unstructured text | FHIR bundle and CSV export after approval |
 
-The project is designed around the following pipeline:
-1. Ingest and preprocess fax pages
-2. Extract field reads from the document
-3. Normalize values (drug, sig, prescriber, DEA, dates)
-4. Validate against external registries (RxNav + NPI registry)
-5. Verify rules and safety checks
-6. Score confidence and triage each field
-7. Present a review queue and approval workflow
-8. Benchmark held-out performance and report metrics
+## Current Metrics
 
-## Repository structure
+The included benchmark runner compares generated prescription orders against truth files. Current local benchmark output:
+
+| Metric | Current value | What it means |
+| --- | ---: | --- |
+| Field accuracy | 100% | Correct fields over the synthetic benchmark set |
+| Silent error rate | 0% | Wrong fields that slipped through unflagged |
+| Flag precision | 100% | Flagged fields are meaningful in the current benchmark |
+| Total fields evaluated | 60 | Number of compared prescription fields |
+| Mismatches | 0 | No field-level mismatches in the current generated benchmark |
+
+These are development metrics on synthetic/sample data, not production clinical claims. The point is that the repo already has an evaluation loop, so new extraction or validation changes can be measured instead of guessed.
+
+## Product Workflow
+
+| Step | System behavior | Primary implementation |
+| --- | --- | --- |
+| 1. Upload fax/image | Pharmacist uploads a PNG/JPEG prescription image | `POST /faxes` in `clearscript/api/main.py` |
+| 2. Extract fields | OCR/image extraction reads patient, medication, sig, prescriber, and date fields | `process_images/process_image.py` |
+| 3. Normalize and verify | Values are checked against deterministic rules and registries | `clearscript/pipeline/verify/rules.py` |
+| 4. Triage | Each field becomes green, yellow, or red based on validation severity | `clearscript/pipeline/triage/scorer.py` |
+| 5. Ground with web search | Tavily supports public validation and safety/contact lookup | `clearscript/integrations/tavily.py` |
+| 6. Review | Pharmacist reviews evidence, resolves ambiguous fields, or starts a call | `web/components/order/OrderReview.tsx` |
+| 7. Call prescriber | Missing/uncertain data can be confirmed through the voice-call workflow | `services/calls/` and call endpoints |
+| 8. Export | Approved orders produce FHIR and CSV outputs | `/orders/{id}/fhir`, `/orders/{id}/export.csv` |
+
+## System Architecture
+
+ClearScript is built as a contract-first workflow:
+
+| Layer | Responsibility |
+| --- | --- |
+| Web console | Review queue, upload dialog, field evidence, call panel, approve/reject flow, metrics |
+| FastAPI backend | API contract, upload orchestration, order state, call simulation/provider boundary, FHIR/CSV output |
+| Extraction workflow | OpenAI-compatible Nicrron API reads prescription images into a strict schema |
+| Verification engine | Rule, registry, and safety checks decide what can be trusted |
+| Agent/web validation | Tavily-powered public search supports validation and callback research |
+| Observability | Prism traces model and agent behavior for explainability |
+| Evaluation | Benchmark generator/runner measures accuracy and silent-error behavior |
+
+## Repository Layout
 
 ```text
 .
-├── AGENTS.md
-├── .env.example
-├── .venv/
+├── artifacts/
+│   └── clearscript_system_design.jpg
 ├── clearscript/
-│   ├── api/
-│   ├── benchmark/
-│   ├── core/
-│   ├── integrations/
-│   ├── pipeline/
-│   └── ...
-├── scripts/
-├── benchmark/
-├── requirements.txt
-├── README.md
-├── member2_verification_eval.md
-├── project.txt
-└── prismtrace_instrumentation.py
+│   ├── api/                 # FastAPI app and workflow adapter
+│   ├── benchmark/           # Synthetic benchmark generator/runner
+│   ├── core/                # Shared backend domain schemas
+│   ├── integrations/        # Nicrron, RxNorm, NPI, Tavily
+│   └── pipeline/            # Extraction, verification, triage
+├── contracts/               # OpenAPI, websocket schema, demo fixtures
+├── process_images/          # Image-to-prescription extraction
+├── services/calls/          # Prescriber-call state/contracts
+├── web/                     # Next.js pharmacist console
+├── scripts/                 # Contract checks, health checks, diagram renderer
+└── tests/                   # Backend/unit tests
 ```
 
-## Environment setup
+## Implementation Notes
 
-### Python
+### Backend
+
+The backend is a FastAPI app in `clearscript/api/main.py`. It serves the same contract consumed by the web console:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /orders` | Queue summaries |
+| `GET /orders/{order_id}` | Full order detail |
+| `POST /faxes` | Upload image and run the integrated extraction/verification workflow |
+| `POST /orders/{order_id}/fields/{field}/resolve` | Pharmacist accept/edit resolution |
+| `POST /orders/{order_id}/fields/{field}/call` | Start prescriber clarification flow |
+| `POST /calls/{call_id}/decision` | Accept/reject completed call result |
+| `POST /orders/{order_id}/approve` | Approve only when red fields are resolved |
+| `GET /orders/{order_id}/fhir` | Export FHIR bundle |
+| `GET /orders/{order_id}/export.csv` | Export CSV |
+| `GET /metrics` | Benchmark/demo metrics |
+
+`clearscript/api/workflow_adapter.py` is the adapter between the cleanup branch workflow and the frontend contract. It converts the validated `PrescriptionOrder` into the richer order shape used by the console.
+
+### Frontend
+
+The `web/` app is a Next.js pharmacist console. It is designed for repeated operational use: queue scanning, field review, evidence inspection, call handling, and final approval. It can run against mocks or the live FastAPI backend.
+
+| Area | Files |
+| --- | --- |
+| API client/types | `web/lib/api/` |
+| Queue | `web/app/(console)/queue/page.tsx`, `web/components/queue/` |
+| Order review | `web/components/order/`, `web/components/fields/` |
+| Calls | `web/components/call/` |
+| Metrics | `web/app/(console)/metrics/page.tsx`, `web/components/metrics/` |
+
+### Tracing and Explainability
+
+Prism is not optional for agent/model entry points. The repo rule is: if a model, chain, graph, tool, retriever, or agent entry point is added, it must be traced before the work is considered complete.
+
+| File | Purpose |
+| --- | --- |
+| `prismtrace_instrumentation.py` | Shared helper for Prism callback instrumentation |
+| `process_images/process_image.py` | Traces image extraction model calls when Prism SDK is installed |
+| `clearscript/integrations/tavily.py` | Traces Tavily search and validation calls |
+| `AGENTS.md` | Standing tracing rule for future work |
+
+## Environment Variables
+
+Create `.env` locally. Do not commit secrets.
+
+| Variable | Required | Used for |
+| --- | --- | --- |
+| `PRISMTRACE_API_KEY` | Yes | Prism tracing |
+| `PRISMTRACE_PROJECT_ID` | Yes | Prism project routing |
+| `PRISMTRACE_HOST` | Yes | Prism API host |
+| `NICRRON_API_KEY` | Yes | OpenAI-compatible image extraction |
+| `NICRRON_BASE_URL` | Yes | Nicrron API base URL |
+| `NICRRON_MODEL` | Yes | Extraction model |
+| `TAVILY_API_KEY` | Yes | Web search and validation |
+| `ELEVENLABS_API_KEY` | For live calls | Voice agent provider |
+| `ELEVENLABS_AGENT_ID` | For live calls | Prescriber-call agent |
+| `ELEVENLABS_PHONE_NUMBER_ID` | For live calls | Outbound calling number |
+| `ELEVENLABS_WEBHOOK_SECRET` | For live calls | Webhook verification |
+| `CALL_PROVIDER` | Optional | `simulated` by default |
+
+## Local Setup
+
+### Backend
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
+python -m venv .venv
+. .venv/Scripts/activate
 pip install -U pip
 pip install -r requirements.txt
-```
-
-### Local environment variables
-
-Create a local `.env` file with the required credentials, without committing secrets:
-
-```bash
-PRISMTRACE_API_KEY=your_key
-PRISMTRACE_PROJECT_ID=your_project_id
-PRISMTRACE_HOST=https://prism-api-prod.up.railway.app
-NICRRON_API_KEY=your_key
-NICRRON_BASE_URL=https://api.nicrron.ai/v1
-```
-
-## PRISM instrumentation
-
-This project is explicitly instrumented for tracing and observability. Every model-calling entry point should emit live trace events to PRISM so that calls, decisions, and review outcomes are visible to the team.
-
-Key files:
-- `prismtrace_instrumentation.py`
-- `clearscript/pipeline/extract/vision.py`
-- `scripts/healthcheck.py`
-
-The repo includes a readiness check that validates both PRISM connectivity and the Nicrron model API.
-
-## Member 2: Verification, Confidence & Evaluation Lead
-
-This repository includes the Member 2 scope for verification, confidence scoring, and evaluation.
-
-### Responsibilities
-
-The Verification, Confidence & Evaluation Lead owns:
-- `pipeline/normalize/`
-- `pipeline/verify/`
-- `pipeline/triage/`
-- `integrations/rxnorm.py`
-- `integrations/npi_registry.py`
-- `integrations/tavily.py`
-- `benchmark/` generation and runner
-
-Their mission is to decide what to trust by:
-- normalizing raw model reads into canonical field values,
-- checking them against external registries and safety rules,
-- assigning confidence and triage status,
-- and proving quality with a benchmark.
-
-### Current state in this repo
-
-The project includes a working baseline for the Member 2 layer:
-- `clearscript/core/schema.py` defines the shared order and field contract
-- `clearscript/pipeline/verify/rules.py` contains rule-based field verification logic
-- `clearscript/pipeline/triage/scorer.py` contains triage logic for green / yellow / red decisions
-- `clearscript/integrations/rxnorm.py` validates against live RxNav endpoints when available, with a local fallback
-- `clearscript/integrations/npi_registry.py` validates NPIs against the CMS NPPES registry when available, with a local checksum fallback
-- `clearscript/benchmark/generate.py` creates synthetic prescription records and truth data
-- `clearscript/benchmark/run.py` compares generated orders to truth files and emits a metrics summary
-
-This gives the project a teammate-ready verification and benchmark baseline that can be extended with richer extraction and more adversarial trap cases.
-
-### Verification rules implemented
-
-The current verification layer checks:
-- required field presence
-- strength format / dose format validation
-- NPI checksum validation
-- DEA checksum validation
-- DOB plausibility
-- written date ISO validity
-- basic signature structure validity
-- RxNorm-style match against a drug entry
-
-These rules return pharmacist-facing conditions and produce red / yellow / green field states.
-
-### Confidence and triage
-
-The scoring layer is meant to:
-- aggregate check severity into field-level risk
-- produce risk states from actual validation results
-- set order status based on the worst field state
-- support retriage during pharmacist review or call-backs
-
-### Benchmark and evaluation
-
-The benchmark is now a truth-based runner rather than a hardcoded placeholder:
-- synthetic orders are created and saved
-- matching truth files are generated
-- each order is compared against its truth file
-- field accuracy and silent-error metrics are computed from the comparison
-
-This gives the team a real baseline to expand into a larger benchmark with traps, calibration, and held-out metrics.
-
-## Recommended workflow
-
-```bash
-# from repo root
-. .venv/bin/activate
-python scripts/healthcheck.py
-python -m clearscript.benchmark.generate
-python -m clearscript.benchmark.run
-```
-
-## Integrated local app flow
-
-This working tree intentionally imports both GitHub feature branches as source, not as a history merge:
-
-- `feature/part2/setup` supplies the `clearscript/` backend, verification, benchmark, PRISM, and registry scaffolding.
-- `feature/sample-data` supplies `process_images/`, sample prescription images, and extraction output examples.
-- The existing `p3/web` console remains the product UI and contract consumer.
-
-Run the fixture-backed live backend:
-
-```bash
 python -m uvicorn clearscript.api.main:app --reload --port 8000
 ```
 
-Run the console against that backend:
+### Frontend
 
 ```bash
 cd web
+npm install
 npm run dev
 ```
 
-The backend exposes the same contract the console validates: queue, order detail, fax page images, field resolve, simulated prescriber calls, approve/FHIR, CSV export, upload, and metrics. The current live backend is deliberately deterministic so the demo flow is reliable while the real extraction and persistence layers mature.
+For live backend mode, configure:
 
-## Demo and product story
+```bash
+NEXT_PUBLIC_API_MODE=live
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
+NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8000/ws/orders
+```
 
-The project is aimed at a clear demo story:
-- a fax arrives
-- key fields are extracted
-- the verification layer flags risky values
-- a pharmacist reviews the mismatches and resolves the final decision
-- traced observability shows how the system reached the answer
+## Verification Commands
 
-That makes the project useful both as an operational pipeline and as a judged demo for risk, trust, and measurable accuracy.
+```bash
+python scripts/check_contract.py --app clearscript.api.main:app
+python -m compileall clearscript process_images services scripts tests -q
+python -m pytest tests/p3/test_state.py -q
+python -m clearscript.benchmark.generate
+python -m clearscript.benchmark.run
+cd web && npm run typecheck
+```
 
-## Important constraints
+## Design Principles
 
-- Keep local secrets in `.env` and never commit them.
-- Use PRISM for tracing of every model and workflow entry point.
-- Build against the schema first before deeper changes.
-- Keep benchmark and evaluation logic explicit and auditable.
-- Treat synthetic data as a development and evaluation scaffold until real fax examples are available.
-- Prefer live external registry lookups where available, but keep a local fallback for resilience.
+| Principle | How the code applies it |
+| --- | --- |
+| Never silently guess | Low-confidence or invalid fields become yellow/red and require review |
+| Separate AI from authority | AI extracts and explains; deterministic checks decide trust boundaries |
+| Make evidence visible | Reads, checks, reasons, call transcripts, and audit events are surfaced |
+| Keep workflow measurable | Benchmark runner tracks accuracy, silent errors, and mismatches |
+| Keep integrations swappable | Nicrron, Tavily, Prism, and ElevenLabs sit behind integration boundaries |
+| Preserve pharmacist control | Human review and approval remain the final operational gate |
 
-## Related docs
+## Demo Story
 
-- `member2_verification_eval.md` — detailed Member 2 specification and deliverables
-- `project.txt` — full end-to-end project brief and team split
-- `AGENTS.md` — project-specific agent guidance, including PRISM tracing requirements
+1. A faxed prescription image arrives.
+2. ClearScript extracts structured fields from the image.
+3. Verification catches missing, invalid, or risky values.
+4. The pharmacist sees why a field was flagged.
+5. Missing data can be escalated to a prescriber call through the call workflow.
+6. Tavily supports public validation and safety/context checks.
+7. Prism records the agent/model behavior for explainability.
+8. Once resolved, the order can be approved and exported as FHIR/CSV.
+
+## Current Limitations
+
+| Limitation | Status |
+| --- | --- |
+| Live external calls use sensitive prescription images | Requires explicit approval and safe data handling |
+| Persistence is in-memory for demo flow | Replace with database for production |
+| Call provider defaults to simulated flow | ElevenLabs credentials enable live provider integration |
+| Benchmark data is synthetic/sample-based | Expand with larger de-identified held-out sets |
+| Clinical validation is partial | Add deeper DUR, allergy, duplicate therapy, and pharmacy-system checks before production |
+
+## Related Docs
+
+| File | Purpose |
+| --- | --- |
+| `DEMO.md` | Demo flow and presentation notes |
+| `AGENTS.md` | PRISM tracing requirements |
+| `contracts/openapi.yaml` | Backend API contract |
+| `contracts/ws-events.schema.json` | Websocket event contract |
+| `web/DESIGN.md` | Console design notes |
