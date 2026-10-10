@@ -1,0 +1,224 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --bg: #f4f6f7;
+  --surface: #ffffff;
+  --surface-2: #eef2f4;
+  --rule: #d9e0e4;
+  --rule-strong: #b9c4cb;
+  --ink: #14202a;
+  --ink-muted: #56636e;
+  --ink-faint: #5c6873; /* ≥4.5:1 on surface, bg and the triage tints */
+  --accent: #0a6b70;
+  --accent-ink: #ffffff;
+  --accent-bg: #e3f1f1;
+  --focus: #1769d1;
+
+  --triage-red: #b42318;
+  --triage-red-bg: #fdecea;
+  --triage-yellow: #8f5f00;
+  --triage-yellow-bg: #fff3d1;
+  --triage-green: #1d7646;
+  --triage-green-bg: #e5f3ea;
+
+  /* Overlay strokes on the fax: brighter than text tokens so they read on paper. */
+  --box-red: #e0352a;
+  --box-yellow: #e7a600;
+  --box-green: #20a35c;
+
+  /* Chart series (validated: dataviz validate_palette.js, light + dark) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+
+  --lightbox: #26313a;
+  --lightbox-ink: #c9d3da;
+
+  --shadow-pop: 0 10px 30px -12px rgb(20 32 42 / 0.35), 0 2px 6px -2px rgb(20 32 42 / 0.12);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f161c;
+    --surface: #151e25;
+    --surface-2: #1b262e;
+    --rule: #26343e;
+    --rule-strong: #364753;
+    --ink: #e4eaee;
+    --ink-muted: #9aa8b2;
+    --ink-faint: #74838e;
+    --accent: #3fb3b0;
+    --accent-ink: #062224;
+    --accent-bg: #10302f;
+    --focus: #6aa8ff;
+    --triage-red: #ff8a80;
+    --triage-red-bg: #3a1714;
+    --triage-yellow: #f2c45a;
+    --triage-yellow-bg: #362a0b;
+    --triage-green: #6fd39a;
+    --triage-green-bg: #0f2e1d;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --lightbox: #0a0f13;
+    --lightbox-ink: #9aa8b2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f161c;
+  --surface: #151e25;
+  --surface-2: #1b262e;
+  --rule: #26343e;
+  --rule-strong: #364753;
+  --ink: #e4eaee;
+  --ink-muted: #9aa8b2;
+  --ink-faint: #74838e;
+  --accent: #3fb3b0;
+  --accent-ink: #062224;
+  --accent-bg: #10302f;
+  --focus: #6aa8ff;
+  --triage-red: #ff8a80;
+  --triage-red-bg: #3a1714;
+  --triage-yellow: #f2c45a;
+  --triage-yellow-bg: #362a0b;
+  --triage-green: #6fd39a;
+  --triage-green-bg: #0f2e1d;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --lightbox: #0a0f13;
+  --lightbox-ink: #9aa8b2;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-faint: var(--ink-faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-bg: var(--accent-bg);
+  --color-focus: var(--focus);
+  --color-red: var(--triage-red);
+  --color-red-bg: var(--triage-red-bg);
+  --color-yellow: var(--triage-yellow);
+  --color-yellow-bg: var(--triage-yellow-bg);
+  --color-green: var(--triage-green);
+  --color-green-bg: var(--triage-green-bg);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-lightbox: var(--lightbox);
+  --color-lightbox-ink: var(--lightbox-ink);
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+  --shadow-pop: var(--shadow-pop);
+  --ease-out-soft: var(--ease);
+}
+
+html {
+  font-size: 14px;
+}
+html[data-demo="1"] {
+  font-size: 15.4px; /* +10% for the projector */
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss02";
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+html[data-demo="1"] .dev-only {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Field resolving: a single brief wash that shows cause → effect. */
+@keyframes resolved {
+  from {
+    background-color: var(--triage-green-bg);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.animate-resolved {
+  animation: resolved 900ms var(--ease);
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+.animate-ring {
+  animation: pulse-ring 1.4s var(--ease) infinite;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.98);
+  }
+}
+.anim-sheet[data-state="open"] {
+  animation: sheet-in 180ms var(--ease);
+}
+.anim-fade[data-state="open"] {
+  animation: fade-in 150ms var(--ease);
+}
+.anim-pop[data-state="open"] {
+  animation: pop-in 170ms var(--ease);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--rule) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
