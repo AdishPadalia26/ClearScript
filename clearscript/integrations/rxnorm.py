@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import re
-from urllib.parse import quote
-from urllib.request import Request, urlopen
+
+from clearscript.integrations.tavily import search_web
 
 RXNORM_DB = {
     "amoxicillin": {
@@ -39,11 +39,45 @@ RXNORM_DB = {
 }
 
 
-def _fetch_json(url: str) -> dict:
-    req = Request(url, headers={"User-Agent": "ClearScript/1.0"})
-    with urlopen(req, timeout=20) as response:
-        payload = response.read().decode("utf-8")
-    return json.loads(payload)
+def _tavily_fallback(drug_name: str | None, strength: str | None = None, form: str | None = None) -> dict:
+    if not drug_name:
+        return {"matched": False, "canonical_name": None, "score": 0.0, "strength_ok": False, "form_ok": False, "reason": "No drug name provided."}
+    query = f"{drug_name} {strength or ''} {form or ''} RxNorm medication reference".strip()
+    try:
+        result = search_web(query)
+    except Exception:
+        return {
+            "matched": False,
+            "canonical_name": None,
+            "score": 0.0,
+            "strength_ok": False,
+            "form_ok": False,
+            "reason": "Public lookup unavailable; using local validation only.",
+        }
+
+    answer = result.get("answer") or ""
+    results = result.get("results") or []
+    top = results[0] if isinstance(results, list) and results else {}
+    snippet = (answer or top.get("content") or top.get("title") or "").strip()
+    if not snippet:
+        return {
+            "matched": False,
+            "canonical_name": None,
+            "score": 0.0,
+            "strength_ok": False,
+            "form_ok": False,
+            "reason": "No public RxNorm reference match found.",
+        }
+
+    return {
+        "matched": True,
+        "canonical_name": drug_name,
+        "score": 0.7,
+        "strength_ok": True if strength else True,
+        "form_ok": True if form else True,
+        "reason": f"Used Tavily public reference for {drug_name}: {snippet[:180]}",
+        "source": "tavily",
+    }
 
 
 def normalize_name(value: str | None) -> str:
@@ -113,34 +147,9 @@ def match_rxnorm(drug_name: str | None, strength: str | None = None, form: str |
         return {"matched": False, "canonical_name": None, "score": 0.0, "strength_ok": False, "form_ok": False, "reason": "No drug name provided."}
 
     try:
-        url = f"https://rxnav.nlm.nih.gov/REST/approximateTerm?term={quote(drug_name)}&maxEntries=5"
-        payload = _fetch_json(url)
-        candidates = payload.get("approximateGroup", {}).get("candidate", [])
-        if not candidates:
-            return _fallback_local_match(drug_name, strength, form)
-
-        best = candidates[0]
-        candidate_name = str(best.get("name") or best.get("str") or "")
-        rx_cui = best.get("rxcui")
-        score = 0.9
-        if strength:
-            strength_norm = _normalize_strength_text(strength)
-            score += 0.05 if strength_norm and strength_norm.lower() in candidate_name.lower() else 0.0
-        if form:
-            form_norm = normalize_name(form)
-            score += 0.05 if form_norm and form_norm in normalize_name(candidate_name) else 0.0
-        score = min(score, 0.99)
-        return {
-            "matched": True,
-            "canonical_name": candidate_name,
-            "score": round(score, 2),
-            "strength_ok": True if strength else True,
-            "form_ok": True if form else True,
-            "reason": f"Matched against RxNav: {candidate_name} (rxcui={rx_cui}).",
-            "source": "rxnav",
-        }
-    except Exception:
         return _fallback_local_match(drug_name, strength, form)
+    except Exception:
+        return _tavily_fallback(drug_name, strength, form)
 
 
 def validate_sig_structure(sig_text: str | None) -> dict:
