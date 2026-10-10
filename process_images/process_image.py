@@ -28,8 +28,8 @@ def _field_value(value):
 
 def extract_prescription(path):
     api_key = os.environ.get("NICRRON_API_KEY")
-    base_url = os.environ.get("NICRRON_BASE_URL", "https://api.nicrron.com/v1")
-    model = os.environ.get("NICRRON_MODEL", "gpt-5.4-mini")
+    base_url = os.environ.get("NICRRON_BASE_URL", "https://api.nicrron.ai/v1")
+    model = os.environ.get("NICRRON_MODEL", "nicrron/auto")
 
     if not api_key:
         raise ValueError("NICRRON_API_KEY is missing. Add it to your .env file.")

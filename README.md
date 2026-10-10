@@ -186,3 +186,117 @@ That makes the project useful both as an operational pipeline and as a judged de
 - `member2_verification_eval.md` — detailed Member 2 specification and deliverables
 - `project.txt` — full end-to-end project brief and team split
 - `AGENTS.md` — project-specific agent guidance, including PRISM tracing requirements
+
+## End-to-end workflow
+
+The project is designed to run as a single pipeline from sample image input to a verified prescription decision.
+
+### 1. Input stage
+
+The process begins with a file in `sample_data/`.
+
+- Each image represents a fax or prescription document.
+- The repo expects one or more scanned prescription images as the input source.
+- The extraction script in `main.py` scans the directory and passes each file into the image-processing pipeline.
+
+### 2. Extraction stage
+
+`process_images/process_image.py` reads each image and sends it to the Nicrron model using the OpenAI-compatible API.
+
+- The image is encoded as a data URL.
+- The model is prompted to return a structured JSON prescription payload.
+- The extractor attempts to recover fields like:
+  - patient name
+  - age / sex
+  - prescriber / doctor name
+  - medication name
+  - strength
+  - dose
+  - frequency
+  - date
+  - signature state
+
+The output is stored as JSON under `sample_output/`.
+
+### 3. Order creation stage
+
+`main.py` converts each extracted payload into a `PrescriptionOrder` using the schema in `clearscript/core/schema.py`.
+
+This step does several important things:
+- maps extracted fields into the shared `PrescriptionOrder` contract,
+- normalizes them into `patient`, `drug`, `sig`, and `prescriber` sections,
+- attaches default risk metadata such as `npi` and `dea` placeholders for validation,
+- creates a real order object that downstream checks can act on.
+
+### 4. Verification stage
+
+The verification layer lives in `clearscript/pipeline/verify/rules.py`.
+
+It runs checks over each field and produces structured `Check` records:
+- `pass`, `warn`, or `fail`
+- severity: `info`, `yellow`, or `red`
+- human-readable reason text
+
+Examples of checks now included:
+- required field presence
+- strength and numeric formatting sanity
+- NPI checksum validation
+- DEA checksum validation
+- written date validity
+- DOB plausibility
+- signature structure sanity
+- RxNorm-style drug match validation
+
+This is where the pipeline decides what is trustworthy and what is risky.
+
+### 5. Triage stage
+
+The triage layer lives in `clearscript/pipeline/triage/scorer.py`.
+
+It reads the verification results and converts them into a final field-level status:
+- green: acceptable
+- yellow: review recommended
+- red: blocked / unsafe
+
+Then it reduces the whole order to a final order status:
+- `ready`
+- `needs_review`
+- `blocked`
+
+This is the stage where a pharmacist or operator sees whether the prescription is safe to proceed or should be reviewed.
+
+### 6. Output / demo artifacts
+
+After the verification and triage pass, the script writes:
+- extracted JSON files in `sample_output/`
+- validated order JSON files like `*_validated.json`
+- a workflow summary file at `sample_output/workflow_summary.json`
+
+This gives a visible audit trail from image input to final review state.
+
+### 7. How to run it
+
+```bash
+cd /home/jona/hackathon/Columbia-Hack
+. .venv/bin/activate
+python main.py
+```
+
+The command processes all images in `sample_data/`, generates extraction JSON, and then validates each extracted prescription through the rule engine and triage logic.
+
+## Artifact policy
+
+Generated JSON files are useful as demo artifacts, but they should be treated carefully:
+
+- Keep a small curated set of committed fixtures if they are intentionally used as sample inputs or reference outputs.
+- Do not commit generated outputs that are purely runtime artifacts and can be recreated.
+- Prefer `.gitignore` for directories like `sample_output/` or `benchmark/` if the contents are ephemeral and meant to be regenerated.
+- Keep only the files that help explain the workflow or serve as handoff examples.
+
+For this repo, the best practice is:
+- keep the source images and a small set of sample outputs as examples,
+- ignore large or repeated generated files unless they are explicitly intended to be part of the demo fixture set.
+
+This keeps the repo clean while preserving a reproducible demo path.
+
+## Related docs

@@ -16,6 +16,8 @@ venv/
 /data/
 /uploads/
 *.sqlite3
+sample_output/
+benchmark/
 
 # Build artifacts
 .dist/
