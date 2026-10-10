@@ -1,9 +1,9 @@
 {
   "patient": {
     "name": {
-      "value": null,
-      "confidence": null,
-      "reasoning": null
+      "value": "Dan D. Lyon",
+      "confidence": 0.99,
+      "reasoning": "Clearly handwritten on the NAME line."
     },
     "age": {
       "value": null,
@@ -18,9 +18,9 @@
   },
   "doctor": {
     "name": {
-      "value": null,
-      "confidence": null,
-      "reasoning": null
+      "value": "Jacquelyn Hyde, MD",
+      "confidence": 0.99,
+      "reasoning": "Printed in the prescription header."
     },
     "specialty": {
       "value": null,
@@ -28,16 +28,104 @@
       "reasoning": null
     },
     "registration_number": {
-      "value": null,
-      "confidence": null,
-      "reasoning": null
+      "value": "AH0079411",
+      "confidence": 0.99,
+      "reasoning": "Printed as DEA# AH0079411 in the header."
     }
   },
-  "medications": [],
+  "medications": [
+    {
+      "name": {
+        "value": "Acetaminophen",
+        "confidence": 0.99,
+        "reasoning": "First handwritten ingredient in the Rx section."
+      },
+      "strength": {
+        "value": "325 mg",
+        "confidence": 0.99,
+        "reasoning": "Written beside Acetaminophen."
+      },
+      "dose": {
+        "value": "1/2 tsp.",
+        "confidence": 0.98,
+        "reasoning": "SIG line states 1/2 tsp."
+      },
+      "frequency": {
+        "value": "q4-6h prn",
+        "confidence": 0.97,
+        "reasoning": "SIG line states q4-6h prn."
+      },
+      "duration": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      }
+    },
+    {
+      "name": {
+        "value": "Alcohol USP",
+        "confidence": 0.98,
+        "reasoning": "Second handwritten ingredient in the Rx section."
+      },
+      "strength": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      },
+      "dose": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      },
+      "frequency": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      },
+      "duration": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      }
+    },
+    {
+      "name": {
+        "value": "Cherry Syrup",
+        "confidence": 0.98,
+        "reasoning": "Third handwritten ingredient in the Rx section."
+      },
+      "strength": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      },
+      "dose": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      },
+      "frequency": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      },
+      "duration": {
+        "value": null,
+        "confidence": null,
+        "reasoning": null
+      }
+    }
+  ],
   "additional_information": {
     "prescription_date": "9/18/14",
     "diagnosis": null,
-    "notes": [],
-    "signature_present": false
+    "notes": [
+      "Alcohol USP: 15 ml",
+      "Cherry Syrup: q.s. 90 ml",
+      "Refills: 1",
+      "Product selection permitted",
+      "Dispense as written"
+    ],
+    "signature_present": true
   }
 }
