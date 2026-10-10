@@ -1,0 +1,10 @@
+{
+  "silent_error_rate": 0.0,
+  "field_accuracy": 1.0,
+  "flag_rate": 0.0,
+  "flag_precision": 1.0,
+  "trap_catch_rate": 1.0,
+  "ece": 0.0,
+  "cost_per_fax": 0.0,
+  "latency_ms": 0
+}
