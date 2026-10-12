@@ -6,6 +6,13 @@ The product hook is simple: fax intake is still slow, manual, and error-prone, b
 
 ![ClearScript system design](artifacts/clearscript_system_design.jpg)
 
+## Demo and Slides
+
+| Resource | Link |
+| --- | --- |
+| Product demo | [Watch the Loom demo](https://www.loom.com/share/fca260457bca494b9aa7068cfd4a0422) |
+| Presentation deck | [Open the pitch slides](deliverables/clearscript_pitch_deck.pptx) |
+
 ## Why It Is Better
 
 | Dimension | Naive fax OCR | ClearScript |
