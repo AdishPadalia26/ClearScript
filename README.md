@@ -8,10 +8,11 @@ The product hook is simple: fax intake is still slow, manual, and error-prone, b
 
 ## Demo and Slides
 
-<a href="https://www.loom.com/share/fca260457bca494b9aa7068cfd4a0422">
-  <img src="https://cdn.loom.com/sessions/thumbnails/fca260457bca494b9aa7068cfd4a0422-with-play.gif" alt="Watch the ClearScript demo" width="720">
-</a>
+<video src="deliverables/clearscript_demo.mp4" controls width="720">
+  Your browser does not support embedded video. Open the demo video from `deliverables/clearscript_demo.mp4`.
+</video>
 
+[Open the demo video](deliverables/clearscript_demo.mp4)
 [Open the pitch slides](deliverables/clearscript_pitch_deck.pptx)
 
 ## Why It Is Better
