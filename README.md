@@ -8,9 +8,7 @@ The product hook is simple: fax intake is still slow, manual, and error-prone, b
 
 ## Demo and Slides
 
-<video src="deliverables/clearscript_demo.mp4" controls width="720">
-  Your browser does not support embedded video. Open the demo video from `deliverables/clearscript_demo.mp4`.
-</video>
+[![ClearScript demo preview](deliverables/clearscript_demo_preview.gif)](deliverables/clearscript_demo.mp4)
 
 [Open the demo video](deliverables/clearscript_demo.mp4)
 [Open the pitch slides](deliverables/clearscript_pitch_deck.pptx)
