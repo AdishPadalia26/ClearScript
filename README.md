@@ -8,9 +8,12 @@ The product hook is simple: fax intake is still slow, manual, and error-prone, b
 
 ## Demo and Slides
 
+[Watch the full demo with audio](deliverables/clearscript_demo.mp4)
+
 [![ClearScript demo preview](deliverables/clearscript_demo_preview.gif)](deliverables/clearscript_demo.mp4)
 
-[Open the demo video](deliverables/clearscript_demo.mp4)
+The inline preview is a silent GIF because GitHub README files do not play embedded MP4 audio inline. Open the demo video above for sound.
+
 [Open the pitch slides](deliverables/clearscript_pitch_deck.pptx)
 
 ## Why It Is Better
