@@ -4,6 +4,18 @@ ClearScript turns messy faxed prescription images into pharmacist-reviewable, ev
 
 The product hook is simple: fax intake is still slow, manual, and error-prone, but prescriptions cannot tolerate silent guesses. ClearScript reads the image, verifies the claim, flags uncertainty, shows the evidence, and only lets safe orders move forward.
 
+## Demo and Slides
+
+[![ClearScript demo preview](deliverables/clearscript_demo_preview.gif)](deliverables/clearscript_demo.mp4)
+
+[Watch the full demo on Loom](https://www.loom.com/share/fca260457bca494b9aa7068cfd4a0422)
+
+[Open the pitch slides](deliverables/clearscript_pitch_deck.pptx)
+
+![ClearScript system design](artifacts/clearscript_system_design.jpg)
+
+ClearScript is designed around a simple flow: the pharmacist uploads a fax image, the backend extracts candidate prescription fields, deterministic verification assigns field-level risk, Tavily can ground uncertain values with public context, Prism records the model/tool behavior, the pharmacist resolves anything unsafe, and the approved order exports as FHIR or CSV.
+
 ## What This Repo Contains
 
 This repository includes the complete hackathon demo path:
@@ -14,18 +26,6 @@ This repository includes the complete hackathon demo path:
 - Deterministic verification and triage rules for prescription fields.
 - Tavily-backed web validation and Prism-traced agent/tool behavior.
 - Sample prescription images, sample outputs, API contracts, benchmark data, a demo video, and pitch slides.
-
-![ClearScript system design](artifacts/clearscript_system_design.jpg)
-
-ClearScript is designed around a simple flow: the pharmacist uploads a fax image, the backend extracts candidate prescription fields, deterministic verification assigns field-level risk, Tavily can ground uncertain values with public context, Prism records the model/tool behavior, the pharmacist resolves anything unsafe, and the approved order exports as FHIR or CSV.
-
-## Demo and Slides
-
-[![ClearScript demo preview](deliverables/clearscript_demo_preview.gif)](deliverables/clearscript_demo.mp4)
-
-[Watch the full demo on Loom](https://www.loom.com/share/fca260457bca494b9aa7068cfd4a0422)
-
-[Open the pitch slides](deliverables/clearscript_pitch_deck.pptx)
 
 ## Why It Is Better
 
