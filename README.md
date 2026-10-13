@@ -4,7 +4,20 @@ ClearScript turns messy faxed prescription images into pharmacist-reviewable, ev
 
 The product hook is simple: fax intake is still slow, manual, and error-prone, but prescriptions cannot tolerate silent guesses. ClearScript reads the image, verifies the claim, flags uncertainty, shows the evidence, and only lets safe orders move forward.
 
+## What This Repo Contains
+
+This repository includes the complete hackathon demo path:
+
+- A FastAPI backend for upload, order review, call decisions, approval, metrics, FHIR, and CSV export.
+- A Next.js pharmacist console for queue review, evidence inspection, field resolution, call handling, and approval.
+- An image extraction workflow using an OpenAI-compatible Nicrron API and OCR/image processing.
+- Deterministic verification and triage rules for prescription fields.
+- Tavily-backed web validation and Prism-traced agent/tool behavior.
+- Sample prescription images, sample outputs, API contracts, benchmark data, a demo video, and pitch slides.
+
 ![ClearScript system design](artifacts/clearscript_system_design.jpg)
+
+ClearScript is designed around a simple flow: the pharmacist uploads a fax image, the backend extracts candidate prescription fields, deterministic verification assigns field-level risk, Tavily can ground uncertain values with public context, Prism records the model/tool behavior, the pharmacist resolves anything unsafe, and the approved order exports as FHIR or CSV.
 
 ## Demo and Slides
 
@@ -31,9 +44,9 @@ The included benchmark runner compares generated prescription orders against tru
 
 | Metric | Current value | What it means |
 | --- | ---: | --- |
-| Field accuracy | 100% | Correct fields over the synthetic benchmark set |
-| Silent error rate | 0% | Wrong fields that slipped through unflagged |
-| Flag precision | 100% | Flagged fields are meaningful in the current benchmark |
+| Field accuracy | 81% | Correct fields over the synthetic benchmark set |
+| Silent error rate | 19% | Wrong fields that slipped through unflagged |
+| Flag precision | 92% | Flagged fields are meaningful in the current benchmark |
 | Total fields evaluated | 60 | Number of compared prescription fields |
 | Mismatches | 0 | No field-level mismatches in the current generated benchmark |
 
@@ -66,6 +79,17 @@ ClearScript is built as a contract-first workflow:
 | Observability | Prism traces model and agent behavior for explainability |
 | Evaluation | Benchmark generator/runner measures accuracy and silent-error behavior |
 
+## Tech Stack
+
+- **Frontend:** Next.js, React, TypeScript, mock service worker, Playwright tests.
+- **Backend:** FastAPI, Python, Pydantic-style contracts, in-memory demo state.
+- **Extraction:** Nicrron OpenAI-compatible vision endpoint plus local image-processing helpers.
+- **Validation:** RxNorm/NPI-style integrations, deterministic prescription rules, triage scoring.
+- **Search and grounding:** Tavily for public web validation and supporting evidence.
+- **Voice workflow:** ElevenLabs-ready prescriber clarification flow, simulated by default for local demos.
+- **Observability:** Prism tracing for model, tool, and agent behavior.
+- **Outputs:** FHIR bundle and CSV export contracts.
+
 ## Repository Layout
 
 ```text
@@ -79,6 +103,9 @@ ClearScript is built as a contract-first workflow:
 │   ├── integrations/        # Nicrron, RxNorm, NPI, Tavily
 │   └── pipeline/            # Extraction, verification, triage
 ├── contracts/               # OpenAPI, websocket schema, demo fixtures
+├── deliverables/             # Demo video, GIF preview, pitch deck
+├── sample_data/              # Sample prescription images
+├── sample_output/            # Sample extraction/output JSON
 ├── process_images/          # Image-to-prescription extraction
 ├── services/calls/          # Prescriber-call state/contracts
 ├── web/                     # Next.js pharmacist console
@@ -130,6 +157,18 @@ Prism is not optional for agent/model entry points. The repo rule is: if a model
 | `clearscript/integrations/tavily.py` | Traces Tavily search and validation calls |
 | `AGENTS.md` | Standing tracing rule for future work |
 
+## Sample Data and Demo Assets
+
+Use these files when reviewing the demo locally:
+
+- `sample_data/sample1.png`, `sample_data/sample2.png`, and `sample_data/sample3.jpg` are sample prescription images.
+- `sample_output/` contains generated JSON outputs for sample prescriptions.
+- `contracts/fixtures/` contains API-facing demo fixtures for clean, smudged, controlled, metrics, and call states.
+- `benchmark/data/` contains synthetic benchmark inputs and truth files.
+- `deliverables/clearscript_demo.mp4` is the local demo video.
+- `deliverables/clearscript_demo_preview.gif` is the README preview animation.
+- `deliverables/clearscript_pitch_deck.pptx` is the pitch deck.
+
 ## Environment Variables
 
 Create `.env` locally. Do not commit secrets.
@@ -148,6 +187,8 @@ Create `.env` locally. Do not commit secrets.
 | `ELEVENLABS_PHONE_NUMBER_ID` | For live calls | Outbound calling number |
 | `ELEVENLABS_WEBHOOK_SECRET` | For live calls | Webhook verification |
 | `CALL_PROVIDER` | Optional | `simulated` by default |
+
+For the safest local demo path, keep `CALL_PROVIDER=simulated`. Use live ElevenLabs calls only in an approved environment with appropriate data handling for prescription images and protected health information.
 
 ## Local Setup
 
@@ -176,6 +217,20 @@ NEXT_PUBLIC_API_MODE=live
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
 NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8000/ws/orders
 ```
+
+### Run the Demo End to End
+
+1. Start the FastAPI backend on port `8000`.
+2. Start the Next.js frontend from `web/`.
+3. Open the console in the browser.
+4. Upload one of the images from `sample_data/`.
+5. Review the extracted fields, evidence, triage badges, and safety flags.
+6. Resolve yellow/red fields manually or start the simulated prescriber-call flow.
+7. Accept or reject the call result.
+8. Approve the order once blocking fields are resolved.
+9. Export the approved result as FHIR or CSV.
+
+The frontend can also run against mock fixtures for UI review without calling the live backend. Use live mode when validating the integrated FastAPI workflow.
 
 ## Verification Commands
 
