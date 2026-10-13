@@ -229,3 +229,34 @@ cd web && npm run typecheck
 | `contracts/openapi.yaml` | Backend API contract |
 | `contracts/ws-events.schema.json` | Websocket event contract |
 | `web/DESIGN.md` | Console design notes |
+
+## Team
+
+| Name | LinkedIn |
+| --- | --- |
+| Vivek Kuppili | [linkedin.com/in/vivekkuppili](https://www.linkedin.com/in/vivekkuppili/) |
+| Jon Andrecaj | [linkedin.com/in/jonandrecaj](https://www.linkedin.com/in/jonandrecaj/) |
+| Joni N. | [linkedin.com/in/joni-n-760a43290](https://www.linkedin.com/in/joni-n-760a43290/) |
+
+## Future Work
+
+| Area | Next step |
+| --- | --- |
+| Production persistence | Replace in-memory order/call state with Postgres or another durable store, including migrations and seed data for demos. |
+| Live call provider | Complete the ElevenLabs provider path with secure webhook verification, retry handling, call scheduling, and call outcome reconciliation. |
+| Larger evaluation set | Expand the benchmark from synthetic/sample cases to a larger de-identified held-out set with smudges, handwriting, multiple drugs, and controlled-substance edge cases. |
+| Clinical safety checks | Add deeper drug utilization review, allergy checks, duplicate therapy checks, interaction checks, and pharmacy-specific policy rules. |
+| Security and compliance | Add role-based access control, audit log retention policy, PHI redaction, encryption-at-rest guidance, and deployment threat modeling. |
+| Deployment pipeline | Add Docker Compose or cloud deployment templates for the web app, FastAPI service, environment configuration, and health checks. |
+| Observability | Extend Prism tracing coverage to every model/tool entry point and add operational metrics for latency, failed uploads, call outcomes, and review resolution time. |
+
+## Remaining Gaps
+
+| Gap | Why it matters |
+| --- | --- |
+| Real-world OCR robustness | The current workflow is demo-ready, but production fax variability needs more testing across scanner quality, skew, shadows, handwriting, and multi-page prescriptions. |
+| End-to-end live call validation | The prescriber-call workflow has a provider boundary and demo flow, but needs full live testing with ElevenLabs webhooks and failure states. |
+| Data privacy hardening | Sample/demo data works for a hackathon, but production PHI requires stricter storage, access, retention, and redaction controls. |
+| Database-backed audit trail | In-memory state is not enough for pharmacy operations because approvals, edits, exports, and call outcomes must survive restarts. |
+| Human review policy | The product needs clear operating rules for when pharmacists can accept, edit, call, reject, or escalate an order. |
+| Integration with pharmacy systems | FHIR and CSV export are present, but real dispensing systems may need custom mappings, authentication, and reconciliation. |
