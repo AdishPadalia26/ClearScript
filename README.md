@@ -232,31 +232,29 @@ cd web && npm run typecheck
 
 ## Team
 
-| Name | LinkedIn |
-| --- | --- |
-| Vivek Kuppili | [linkedin.com/in/vivekkuppili](https://www.linkedin.com/in/vivekkuppili/) |
-| Jon Andrecaj | [linkedin.com/in/jonandrecaj](https://www.linkedin.com/in/jonandrecaj/) |
-| Joni N. | [linkedin.com/in/joni-n-760a43290](https://www.linkedin.com/in/joni-n-760a43290/) |
+ClearScript was built by:
+
+- [Vivek Kuppili](https://www.linkedin.com/in/vivekkuppili/)
+- [Jon Andrecaj](https://www.linkedin.com/in/jonandrecaj/)
+- [Joni N.](https://www.linkedin.com/in/joni-n-760a43290/)
 
 ## Future Work
 
-| Area | Next step |
-| --- | --- |
-| Production persistence | Replace in-memory order/call state with Postgres or another durable store, including migrations and seed data for demos. |
-| Live call provider | Complete the ElevenLabs provider path with secure webhook verification, retry handling, call scheduling, and call outcome reconciliation. |
-| Larger evaluation set | Expand the benchmark from synthetic/sample cases to a larger de-identified held-out set with smudges, handwriting, multiple drugs, and controlled-substance edge cases. |
-| Clinical safety checks | Add deeper drug utilization review, allergy checks, duplicate therapy checks, interaction checks, and pharmacy-specific policy rules. |
-| Security and compliance | Add role-based access control, audit log retention policy, PHI redaction, encryption-at-rest guidance, and deployment threat modeling. |
-| Deployment pipeline | Add Docker Compose or cloud deployment templates for the web app, FastAPI service, environment configuration, and health checks. |
-| Observability | Extend Prism tracing coverage to every model/tool entry point and add operational metrics for latency, failed uploads, call outcomes, and review resolution time. |
+The next version of ClearScript should focus on making the demo workflow production-ready. The first priority is durable persistence for orders, calls, audit events, and exported payloads, since the current backend is optimized for a reliable hackathon demo. A database-backed workflow would also make it easier to support multiple pharmacists, recover from restarts, and review historical decisions.
 
-## Remaining Gaps
+The call workflow should also move from simulation to a fully validated ElevenLabs path. That includes webhook verification, retry handling, allowed calling windows, call outcome reconciliation, and clearer controls for when a pharmacist can accept or reject a confirmed value.
 
-| Gap | Why it matters |
-| --- | --- |
-| Real-world OCR robustness | The current workflow is demo-ready, but production fax variability needs more testing across scanner quality, skew, shadows, handwriting, and multi-page prescriptions. |
-| End-to-end live call validation | The prescriber-call workflow has a provider boundary and demo flow, but needs full live testing with ElevenLabs webhooks and failure states. |
-| Data privacy hardening | Sample/demo data works for a hackathon, but production PHI requires stricter storage, access, retention, and redaction controls. |
-| Database-backed audit trail | In-memory state is not enough for pharmacy operations because approvals, edits, exports, and call outcomes must survive restarts. |
-| Human review policy | The product needs clear operating rules for when pharmacists can accept, edit, call, reject, or escalate an order. |
-| Integration with pharmacy systems | FHIR and CSV export are present, but real dispensing systems may need custom mappings, authentication, and reconciliation. |
+The verification layer can become stronger with a larger benchmark set. More de-identified fax examples would help test smudged scans, handwriting, multi-page prescriptions, controlled-substance edge cases, and multiple medications on one fax. That benchmark should continue tracking field accuracy, silent error rate, review burden, and trap-case detection.
+
+The product would also benefit from deeper pharmacy safety checks, including allergy review, duplicate therapy checks, drug interaction checks, refill policy rules, and pharmacy-system-specific mappings. FHIR and CSV export already demonstrate the handoff path, but real dispensing systems will need authentication, custom mapping, and reconciliation.
+
+## README Improvements Still To Add
+
+This README now explains the product, workflow, demo, architecture, setup, metrics, team, and roadmap. A few documentation pieces would make it even stronger for judges, teammates, and future contributors:
+
+- Add a hosted deployment link when the app is available outside local development.
+- Add screenshots of the queue, field review drawer, call panel, and approval/FHIR export flow.
+- Add a short API walkthrough with example request and response payloads for upload, resolve, call, approve, and export.
+- Add a troubleshooting section for common setup issues, especially missing API keys, local port conflicts, and external API timeouts.
+- Add a contribution guide that explains branch naming, testing expectations, PR review, and how to keep Prism tracing wired for new model or agent entry points.
+- Add a license section once the team decides how the project should be shared after the hackathon.
