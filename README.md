@@ -240,21 +240,11 @@ ClearScript was built by:
 
 ## Future Work
 
-The next version of ClearScript should focus on making the demo workflow production-ready. The first priority is durable persistence for orders, calls, audit events, and exported payloads, since the current backend is optimized for a reliable hackathon demo. A database-backed workflow would also make it easier to support multiple pharmacists, recover from restarts, and review historical decisions.
+The next version of ClearScript should focus on moving from a reliable hackathon demo to a production-ready pharmacy workflow.
 
-The call workflow should also move from simulation to a fully validated ElevenLabs path. That includes webhook verification, retry handling, allowed calling windows, call outcome reconciliation, and clearer controls for when a pharmacist can accept or reject a confirmed value.
-
-The verification layer can become stronger with a larger benchmark set. More de-identified fax examples would help test smudged scans, handwriting, multi-page prescriptions, controlled-substance edge cases, and multiple medications on one fax. That benchmark should continue tracking field accuracy, silent error rate, review burden, and trap-case detection.
-
-The product would also benefit from deeper pharmacy safety checks, including allergy review, duplicate therapy checks, drug interaction checks, refill policy rules, and pharmacy-system-specific mappings. FHIR and CSV export already demonstrate the handoff path, but real dispensing systems will need authentication, custom mapping, and reconciliation.
-
-## README Improvements Still To Add
-
-This README now explains the product, workflow, demo, architecture, setup, metrics, team, and roadmap. A few documentation pieces would make it even stronger for judges, teammates, and future contributors:
-
-- Add a hosted deployment link when the app is available outside local development.
-- Add screenshots of the queue, field review drawer, call panel, and approval/FHIR export flow.
-- Add a short API walkthrough with example request and response payloads for upload, resolve, call, approve, and export.
-- Add a troubleshooting section for common setup issues, especially missing API keys, local port conflicts, and external API timeouts.
-- Add a contribution guide that explains branch naming, testing expectations, PR review, and how to keep Prism tracing wired for new model or agent entry points.
-- Add a license section once the team decides how the project should be shared after the hackathon.
+- **Durable persistence:** Replace in-memory order and call state with a database-backed workflow for orders, audit events, call outcomes, and exported payloads. This would support restarts, multiple pharmacists, and historical review.
+- **Live ElevenLabs calling:** Complete the live provider path with webhook verification, retry handling, allowed calling windows, and call outcome reconciliation. Pharmacists should have clear controls for accepting or rejecting confirmed values.
+- **Larger evaluation set:** Expand beyond synthetic/sample data into a larger de-identified benchmark with smudged scans, handwriting, multi-page prescriptions, controlled-substance cases, and multiple medications per fax.
+- **Deeper safety checks:** Add allergy review, duplicate therapy checks, drug interaction checks, refill policy rules, and pharmacy-specific validation policies before production use.
+- **Production integrations:** Extend FHIR and CSV export into real dispensing-system workflows with authentication, custom field mappings, and reconciliation after handoff.
+- **Operational monitoring:** Track upload failures, extraction latency, call completion rate, field resolution time, silent-error rate, and review burden so the team can improve the system with evidence.
