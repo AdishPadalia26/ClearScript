@@ -1,4 +1,4 @@
-# ClearScript - Fax to Fill
+# ClearScript - Fax to Fill (Winner of Columbia Get Hired Hack 2026)
 
 ClearScript turns messy faxed prescription images into pharmacist-reviewable, evidence-backed orders instead of asking pharmacy teams to trust raw OCR. When fields are missing or risky, the workflow can route to an ElevenLabs voice agent to call the prescriber, use Tavily for web search and public validation, and capture Prism traces so every agent action, link, decision, and model behavior is explainable.
 
