@@ -288,7 +288,7 @@ cd web && npm run typecheck
 ## Team
 
 ClearScript was built by:
-
+- [Adish Padalia](https://www.linkedin.com/in/adish-padalia-a3768a230/)
 - [Vivek Kuppili](https://www.linkedin.com/in/vivekkuppili/)
 - [Jon Andrecaj](https://www.linkedin.com/in/jonandrecaj/)
 - [Joni N.](https://www.linkedin.com/in/joni-n-760a43290/)
